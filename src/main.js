@@ -200,6 +200,7 @@ $('config-reset').addEventListener('click', () => {
 // ---- wiring ---------------------------------------------------------------
 dom.refresh.addEventListener('click', refresh);
 $('open-config').addEventListener('click', openConfigDialog);
+$('open-token').addEventListener('click', openTokenDialog);
 for (const k of ['text', 'repo', 'bucket', 'author', 'sort']) {
   dom[k].addEventListener(k === 'text' ? 'input' : 'change', () => cache && redraw());
 }

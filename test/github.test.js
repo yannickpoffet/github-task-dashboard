@@ -56,6 +56,7 @@ test('fetchDashboard: first run = 2 requests, cached session = 1, results merged
   );
   const r = await fetchDashboard('tok', DEFAULT_CONFIG, null, { fetchImpl: f.impl });
   assert.equal(r.requestCount, 2);
+  assert.equal(r.counts.involved, 8);
   assert.deepEqual(r.teams, ['Auterion/orca']);
   assert.equal(r.prs.length, 11);
   assert.equal(r.issues.length, 2);

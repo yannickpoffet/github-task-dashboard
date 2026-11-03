@@ -103,9 +103,11 @@ export async function fetchDashboard(token, config, session = null, opts = {}) {
 
   const nodes = {};
   const pending = {};
+  const counts = {}; // total matches GitHub reports per search, for diagnostics
   for (const alias of Object.keys(searches)) {
     const s = first.data[alias];
     nodes[alias] = [...(s?.nodes || [])];
+    counts[alias] = s?.issueCount ?? 0;
     if (s?.pageInfo?.hasNextPage) pending[alias] = s.pageInfo.endCursor;
   }
   for (let page = 0; page < MAX_EXTRA_PAGES && Object.keys(pending).length; page++) {
@@ -126,7 +128,7 @@ export async function fetchDashboard(token, config, session = null, opts = {}) {
   const prs = pick('PullRequest');
   const issues = pick('Issue');
   return {
-    login, teams, prs, issues, rateLimit, warnings, requestCount,
+    login, teams, prs, issues, counts, rateLimit, warnings, requestCount,
     repoCount: new Set([...prs, ...issues].map((n) => n.repository?.nameWithOwner)).size,
   };
 }

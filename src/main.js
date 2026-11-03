@@ -73,8 +73,20 @@ function redraw() {
   dom.footRate.textContent = r
     ? `API ${r.remaining}/${r.limit} left · cost ${r.cost} · ${cache.requestCount} request${cache.requestCount === 1 ? '' : 's'} · resets ${new Date(r.resetAt).toLocaleTimeString()}`
     : '';
+  const c = cache.counts;
+  if (c) {
+    dom.footRepos.textContent += ` · matches: PRs involving you ${c.involved ?? '-'}, review requests ${c.requested}, extra repos ${c.extra ?? '-'}, issues ${(c.issuesAssigned ?? 0) + (c.issuesAuthored ?? 0)}`;
+  }
   for (const w of cache.warnings || []) {
     if (dom.banner.hidden) showBanner(w.message, { tone: 'warn', url: w.url });
+  }
+  if (dom.banner.hidden && c && config.orgs.length && c.involved === 0) {
+    showBanner(`The search in ${config.orgs.join(', ')} found 0 PRs involving you. If GitHub's own search shows some, the token is probably not authorized for that organization: open the token, click Configure SSO and authorize it, then refresh.`,
+      { tone: 'warn', url: 'https://github.com/settings/tokens' });
+  }
+  const bare = config.extraRepos.filter((r) => !r.includes('/'));
+  if (dom.banner.hidden && bare.length) {
+    showBanner(`"${bare.join(', ')}" in Settings has no owner, so it is searched as an organization. Write repos as owner/repo.`, { tone: 'warn' });
   }
 }
 

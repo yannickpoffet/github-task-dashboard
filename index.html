@@ -14,6 +14,7 @@
   <header class="bar">
     <h1>Task Dashboard</h1>
     <span id="user" class="muted"></span>
+    <span id="summary" class="muted"></span>
     <span class="spacer"></span>
     <span id="updated" class="muted" aria-live="polite"></span>
     <button id="refresh" type="button" title="Refresh now">Refresh</button>
@@ -26,7 +27,6 @@
   <section class="filters" aria-label="Filters">
     <input id="f-text" type="search" placeholder="Search title, repo, author, reason" aria-label="Search">
     <select id="f-repo" aria-label="Repository"><option value="">All repos</option></select>
-    <select id="f-bucket" aria-label="Bucket"><option value="">All buckets</option></select>
     <select id="f-author" aria-label="Author"><option value="">All authors</option></select>
     <select id="f-sort" aria-label="Sort by age">
       <option value="oldest">Oldest first</option>
@@ -34,12 +34,33 @@
     </select>
   </section>
 
+  <section class="chiprows" aria-label="Quick filters">
+    <div class="chiprow"><span class="chiplabel">Show</span><div id="chips-show" class="chips"></div></div>
+    <div class="chiprow"><span class="chiplabel">Type</span><div id="chips-type" class="chips"></div></div>
+  </section>
+
+  <details id="scan-details" class="scan">
+    <summary>Branch scan <span class="muted">(on demand, one repo at a time)</span></summary>
+    <div class="scan-row">
+      <select id="scan-repo" aria-label="Repository to scan"><option value="">Choose a repo…</option></select>
+      <input id="scan-base" type="text" placeholder="base branch (default branch if empty)" aria-label="Base branch" spellcheck="false" autocomplete="off">
+      <button id="scan-run" type="button">Scan my branches</button>
+    </div>
+    <p id="scan-status" class="muted small" aria-live="polite"></p>
+    <p class="muted small">Looks at the 300 most recently updated branches whose latest commit is yours. Branches with an open PR are skipped. Results appear under "Dead branches" and "Unmerged work, no PR".</p>
+  </details>
+
+  <nav id="sections" class="secnav" aria-label="Sections"></nav>
+
   <main id="main"></main>
 
-  <footer class="bar foot">
-    <span id="foot-repos" class="muted"></span>
-    <span class="spacer"></span>
-    <span id="foot-rate" class="muted"></span>
+  <footer class="foot">
+    <div class="bar">
+      <span id="foot-repos" class="muted"></span>
+      <span class="spacer"></span>
+      <span id="foot-rate" class="muted"></span>
+    </div>
+    <p class="muted small">Sources: GitHub GraphQL search (open PRs involving you, review requests, issues assigned to or opened by you) and on-demand branch scans. Read-only: nothing is merged, closed or deleted. Not covered: Actions failures, Dependabot and security alerts.</p>
   </footer>
 
   <dialog id="token-dialog">

@@ -10,6 +10,8 @@ export const BUCKETS = [
   { id: 'stale', label: 'Stale' },
   { id: 'waiting-on-others', label: 'Waiting on others' },
   { id: 'issues', label: 'Issues' },
+  { id: 'dead-branches', label: 'Dead branches' },
+  { id: 'unmerged-branches', label: 'Unmerged work, no PR' },
   { id: 'watching', label: 'Watching (no action)' },
 ];
 
@@ -50,6 +52,8 @@ export function normalizePR(n) {
     isDraft: !!n.isDraft,
     createdAt: n.createdAt,
     updatedAt: n.updatedAt,
+    additions: n.additions ?? null,
+    deletions: n.deletions ?? null,
     mergeable: n.mergeable || 'UNKNOWN',
     reviewDecision: n.reviewDecision || null,
     ci: commit?.statusCheckRollup?.state || 'NONE',
@@ -87,7 +91,7 @@ export function classifyPR(pr, ctx) {
   const isMine = lc(pr.author) === me;
   const myReview = pr.reviews.find((r) => lc(r.author) === me && r.state !== 'PENDING');
   const requested = [...pr.requestedUsers, ...pr.requestedTeams];
-  const hit = (bucket, reason) => ({ bucket, reason });
+  const hit = (bucket, reason, extra = {}) => ({ bucket, reason, ...extra });
 
   // --- Waiting on you -------------------------------------------------------
   if (pr.requestedUsers.some((u) => lc(u) === me)) {
@@ -114,7 +118,7 @@ export function classifyPR(pr, ctx) {
         .map((r) => ({ author: r.author, at: r.at, what: r.state === 'CHANGES_REQUESTED' ? 'requested changes' : 'reviewed' })),
     ].sort((a, b) => b.at - a.at);
     if (others.length && others[0].at > mine) {
-      return hit('waiting-on-you', `${others[0].author} ${others[0].what} ${ago(others[0].at)}, after your last activity`);
+      return hit('waiting-on-you', `${others[0].author} ${others[0].what} ${ago(others[0].at)}, after your last activity`, { unanswered: true });
     }
     const cr = pr.reviews.filter((r) => r.state === 'CHANGES_REQUESTED').sort((a, b) => b.at - a.at)[0];
     if (pr.reviewDecision === 'CHANGES_REQUESTED' && cr && pr.lastCommitAt > cr.at && requested.length === 0) {
@@ -163,16 +167,91 @@ export function classifyIssue(issue, ctx) {
   return { bucket: 'issues', reason };
 }
 
-/** Raw nodes -> flat list of display rows, one per unique PR/issue. */
-export function classifyAll({ prs = [], issues = [] }, ctx) {
+/** Flatten one branch node of a scan (see BRANCH_QUERY) into display fields. */
+export function normalizeBranch(n, scan) {
+  const t = n.target || {};
+  const cmp = n.compare;
+  const path = String(n.name).split('/').map(encodeURIComponent).join('/');
+  return {
+    kind: 'branch',
+    id: `${scan.repo}:${n.name}`,
+    repo: scan.repo,
+    name: n.name,
+    title: n.name,
+    number: null,
+    url: `https://github.com/${scan.repo}/tree/${path}`,
+    base: scan.base,
+    defaultBranch: scan.defaultBranch,
+    author: t.author?.user?.login || null,
+    committedAt: ts(t.committedDate),
+    createdAt: t.committedDate,
+    updatedAt: t.committedDate,
+    // compare() is taken from the branch's point of view, see BRANCH_QUERY.
+    ahead: cmp ? cmp.behindBy : null,
+    behind: cmp ? cmp.aheadBy : null,
+    prs: (n.associatedPullRequests?.nodes || []).map((p) => ({
+      number: p.number, state: p.state, mergedAt: ts(p.mergedAt), closedAt: ts(p.closedAt),
+    })),
+  };
+}
+
+/**
+ * Branch rules. Only branches whose tip commit is authored by me are considered, and
+ * branches with an open PR are skipped (they already show up as PRs). Returns null to skip.
+ */
+export function classifyBranch(b, ctx) {
+  if (!b.author || lc(b.author) !== lc(ctx.me)) return null;
+  if (b.name === b.defaultBranch || b.name === b.base) return null;
+  if (b.prs.some((p) => p.state === 'OPEN')) return null;
+  const now = ctx.now;
+  const merged = b.prs.filter((p) => p.state === 'MERGED').sort((x, y) => y.mergedAt - x.mergedAt)[0];
+  if (merged) {
+    // Squash merges leave the branch "ahead" forever, so judge by the tip date instead.
+    return b.committedAt <= merged.mergedAt + 60_000
+      ? { bucket: 'dead-branches', reason: `PR #${merged.number} was merged ${timeAgo(merged.mergedAt, now)}; the branch can be deleted` }
+      : { bucket: 'unmerged-branches', reason: `Has commits newer than its merged PR #${merged.number} (${timeAgo(b.committedAt, now)})` };
+  }
+  if (b.ahead === 0) {
+    return { bucket: 'dead-branches', reason: `No commits ahead of ${b.base}; already merged or empty` };
+  }
+  const closed = b.prs.filter((p) => p.state === 'CLOSED').sort((x, y) => y.closedAt - x.closedAt)[0];
+  const ahead = b.ahead == null ? 'Unknown distance from' : `${b.ahead} commit${b.ahead === 1 ? '' : 's'} ahead of`;
+  return {
+    bucket: 'unmerged-branches',
+    reason: closed
+      ? `${ahead} ${b.base}; PR #${closed.number} was closed without merging`
+      : `${ahead} ${b.base}, last commit ${timeAgo(b.committedAt, now)}; no PR`,
+  };
+}
+
+/**
+ * Raw nodes -> flat list of display rows, one per unique PR/issue/branch.
+ * branchScans = { 'owner/repo': { repo, base, defaultBranch, nodes } } from on-demand scans.
+ */
+export function classifyAll({ prs = [], issues = [], branchScans = {} }, ctx) {
+  const me = lc(ctx.me);
   const rows = [];
   for (const n of dedupeById(prs)) {
     const pr = normalizePR(n);
-    rows.push({ ...pr, ...classifyPR(pr, ctx) });
+    const mine = lc(pr.author) === me;
+    const res = classifyPR(pr, ctx);
+    const noReviewer = mine && !pr.isDraft && pr.reviewDecision !== 'APPROVED'
+      && pr.requestedUsers.length + pr.requestedTeams.length === 0;
+    rows.push({ ...pr, ...res, mine, noReviewer, unanswered: !!res.unanswered });
   }
   for (const n of dedupeById(issues)) {
     const issue = normalizeIssue(n);
-    rows.push({ ...issue, ...classifyIssue(issue, ctx) });
+    rows.push({ ...issue, ...classifyIssue(issue, ctx), mine: true }); // issues are mine by construction
+  }
+  const seen = new Set();
+  for (const scan of Object.values(branchScans || {})) {
+    for (const n of scan.nodes || []) {
+      const b = normalizeBranch(n, scan);
+      if (seen.has(b.id)) continue;
+      seen.add(b.id);
+      const res = classifyBranch(b, ctx);
+      if (res) rows.push({ ...b, ...res, mine: true });
+    }
   }
   return rows;
 }

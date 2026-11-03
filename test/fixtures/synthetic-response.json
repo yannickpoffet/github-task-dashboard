@@ -49,6 +49,8 @@
           "headRefName": "feature-1",
           "mergeable": "MERGEABLE",
           "reviewDecision": "APPROVED",
+          "additions": 5276,
+          "deletions": 2,
           "reviewRequests": {
             "nodes": []
           },
@@ -89,6 +91,8 @@
           "headRefName": "feature-2",
           "mergeable": "MERGEABLE",
           "reviewDecision": null,
+          "additions": 48,
+          "deletions": 12,
           "reviewRequests": {
             "nodes": [
               {
@@ -424,6 +428,8 @@
           "headRefName": "feature-9",
           "mergeable": "MERGEABLE",
           "reviewDecision": null,
+          "additions": 310,
+          "deletions": 95,
           "reviewRequests": {
             "nodes": [
               {
@@ -611,6 +617,196 @@
           }
         }
       ]
+    }
+  },
+  "defaultBranch": {
+    "data": {
+      "rateLimit": {
+        "cost": 1,
+        "remaining": 4998,
+        "limit": 5000,
+        "resetAt": "2026-11-02T13:00:00Z"
+      },
+      "repository": {
+        "nameWithOwner": "Auterion/px4-firmware",
+        "defaultBranchRef": {
+          "name": "main"
+        }
+      }
+    }
+  },
+  "branchScan": {
+    "data": {
+      "rateLimit": {
+        "cost": 4,
+        "remaining": 4994,
+        "limit": 5000,
+        "resetAt": "2026-11-02T13:00:00Z"
+      },
+      "repository": {
+        "nameWithOwner": "Auterion/px4-firmware",
+        "defaultBranchRef": {
+          "name": "main"
+        },
+        "refs": {
+          "pageInfo": {
+            "hasNextPage": false,
+            "endCursor": null
+          },
+          "nodes": [
+            {
+              "name": "main",
+              "target": {
+                "committedDate": "2026-11-02T10:00:00.000Z",
+                "author": {
+                  "user": {
+                    "login": "alice"
+                  }
+                }
+              },
+              "associatedPullRequests": {
+                "nodes": []
+              },
+              "compare": {
+                "aheadBy": 0,
+                "behindBy": 0
+              }
+            },
+            {
+              "name": "feature/old-gps-fix",
+              "target": {
+                "committedDate": "2026-09-23T12:00:00.000Z",
+                "author": {
+                  "user": {
+                    "login": "me"
+                  }
+                }
+              },
+              "associatedPullRequests": {
+                "nodes": [
+                  {
+                    "number": 801,
+                    "state": "MERGED",
+                    "baseRefName": "main",
+                    "mergedAt": "2026-09-25T12:00:00.000Z",
+                    "closedAt": "2026-09-25T12:00:00.000Z"
+                  }
+                ]
+              },
+              "compare": {
+                "aheadBy": 0,
+                "behindBy": 12
+              }
+            },
+            {
+              "name": "tmp/already-in-main",
+              "target": {
+                "committedDate": "2026-10-18T12:00:00.000Z",
+                "author": {
+                  "user": {
+                    "login": "me"
+                  }
+                }
+              },
+              "associatedPullRequests": {
+                "nodes": []
+              },
+              "compare": {
+                "aheadBy": 220,
+                "behindBy": 0
+              }
+            },
+            {
+              "name": "wip/ekf-tuning",
+              "target": {
+                "committedDate": "2026-10-24T12:00:00.000Z",
+                "author": {
+                  "user": {
+                    "login": "me"
+                  }
+                }
+              },
+              "associatedPullRequests": {
+                "nodes": []
+              },
+              "compare": {
+                "aheadBy": 2,
+                "behindBy": 5276
+              }
+            },
+            {
+              "name": "experiment/closed-idea",
+              "target": {
+                "committedDate": "2026-08-24T12:00:00.000Z",
+                "author": {
+                  "user": {
+                    "login": "me"
+                  }
+                }
+              },
+              "associatedPullRequests": {
+                "nodes": [
+                  {
+                    "number": 790,
+                    "state": "CLOSED",
+                    "baseRefName": "main",
+                    "mergedAt": null,
+                    "closedAt": "2026-08-25T12:00:00.000Z"
+                  }
+                ]
+              },
+              "compare": {
+                "aheadBy": 0,
+                "behindBy": 4
+              }
+            },
+            {
+              "name": "feature/someone-elses",
+              "target": {
+                "committedDate": "2026-10-29T08:00:00.000Z",
+                "author": {
+                  "user": {
+                    "login": "alice"
+                  }
+                }
+              },
+              "associatedPullRequests": {
+                "nodes": []
+              },
+              "compare": {
+                "aheadBy": 0,
+                "behindBy": 7
+              }
+            },
+            {
+              "name": "feature/has-open-pr",
+              "target": {
+                "committedDate": "2026-10-29T08:00:00.000Z",
+                "author": {
+                  "user": {
+                    "login": "me"
+                  }
+                }
+              },
+              "associatedPullRequests": {
+                "nodes": [
+                  {
+                    "number": 812,
+                    "state": "OPEN",
+                    "baseRefName": "main",
+                    "mergedAt": null,
+                    "closedAt": null
+                  }
+                ]
+              },
+              "compare": {
+                "aheadBy": 0,
+                "behindBy": 2
+              }
+            }
+          ]
+        }
+      }
     }
   }
 }

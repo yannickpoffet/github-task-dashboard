@@ -7,7 +7,7 @@ fragment PR on PullRequest {
   repository { nameWithOwner }
   author { login }
   baseRefName headRefName
-  mergeable reviewDecision
+  mergeable reviewDecision additions deletions
   reviewRequests(first: 10) {
     nodes { requestedReviewer { ... on User { login } ... on Team { slug combinedSlug } } }
   }
@@ -90,3 +90,37 @@ ${ISSUE_FRAGMENT}`;
 
 /** Tiny query used to learn the viewer's login before the main request. */
 export const VIEWER_QUERY = 'query { viewer { login } rateLimit { cost remaining limit resetAt } }';
+
+const RATE = 'rateLimit { cost remaining limit resetAt }';
+
+/** Resolve a repo's default branch (only needed when the user leaves the base empty). */
+export const DEFAULT_BRANCH_QUERY = `query DefaultBranch($owner: String!, $name: String!) {
+  ${RATE}
+  repository(owner: $owner, name: $name) { nameWithOwner defaultBranchRef { name } }
+}`;
+
+/**
+ * One page (100) of a repo's branches, newest commit first. For each branch:
+ * tip commit date + author, its PRs (any state) and how far it is from $base.
+ * Note the direction: compare(headRef: $base) is evaluated with the branch as the base,
+ * so aheadBy = commits $base has that the branch lacks (branch is BEHIND by that many)
+ * and behindBy = commits the branch has that $base lacks (branch is AHEAD).
+ */
+export const BRANCH_QUERY = `query Branches($owner: String!, $name: String!, $base: String!, $after: String) {
+  ${RATE}
+  repository(owner: $owner, name: $name) {
+    nameWithOwner
+    defaultBranchRef { name }
+    refs(refPrefix: "refs/heads/", first: 100, after: $after, orderBy: { field: TAG_COMMIT_DATE, direction: DESC }) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        name
+        target { ... on Commit { committedDate author { user { login } } } }
+        associatedPullRequests(first: 5, states: [OPEN, MERGED, CLOSED]) {
+          nodes { number state mergedAt closedAt baseRefName }
+        }
+        compare(headRef: $base) { aheadBy behindBy }
+      }
+    }
+  }
+}`;

@@ -37,18 +37,35 @@ Organizations searched for anything involving you, extra repos/orgs (e.g. `PX4/P
 stale threshold (days), auto-refresh interval (minutes). Auto-refresh runs only while the tab is
 visible and pauses after an auth or rate-limit error until you press Refresh.
 
-## Buckets
+## What the page shows
 
-Each item lands in exactly one bucket, first match wins: Waiting on you, Ready to merge,
-Needs finishing, Stale, Waiting on others, Issues; plus a collapsed "Watching" bucket for other
-people's PRs where you are only mentioned. Every row shows a one-line reason. Rules and the
-deviations from the original plan are in `PLAN.md`; the code is `src/classify.js`.
+- **Sections** (sticky jump bar with live counts): Waiting on you, Ready to merge, Needs finishing,
+  Stale, Waiting on others, Issues, Dead branches, Unmerged work with no PR, and a collapsed
+  "Watching" section for other people's PRs where you are only mentioned. Every item lands in
+  exactly one section (first matching rule wins) and every row has a one-line reason.
+- **Rows**: repo, `#PR title` / issue / `⎇ branch`, a status stripe (red = act now, amber = needs
+  attention, green = ready, grey = waiting), pills (`yours`, base branch, CI, review state,
+  `review unanswered`, `no reviewer`, `conflicts`, `+adds / −dels`, age) and a link that opens GitHub
+  in a new tab.
+- **Filters** that combine, with counts that follow the current selection: search, repo, author,
+  *Show* chips (All, Needs action, Mine, CI failing, No reviewer, Stale, Close or delete) and *Type*
+  chips (PRs, Issues, Branches; pick several).
+- **Branch scan** (on demand, because scanning is the slow part): open "Branch scan", pick a repo,
+  optionally a base branch (default branch if empty) and press the button. It looks at the 300 most
+  recently updated branches whose latest commit is yours, skips branches with an open PR, and
+  fills "Dead branches" (merged PR, or nothing ahead of base) and "Unmerged work, no PR". Results
+  are kept in your browser across refreshes. Note: a branch tip whose commit author has no
+  GitHub-linked email is not recognised as yours.
+- Light/dark theme, works at phone width, read-only (nothing is merged, closed or deleted).
+
+Not covered: Actions failures, Dependabot and security alerts. Rules and deviations from the
+original plan are in `PLAN.md`; the code is `src/classify.js` and `src/filters.js`.
 
 ## Layout
 
 ```
 index.html  style.css
-src/   config.js github.js queries.js classify.js render.js store.js main.js
+src/   config.js github.js queries.js classify.js filters.js render.js store.js main.js
 scripts/probe.mjs            # run the real query once, save + scrub the response, report empty fields
 scripts/make-synthetic.mjs   # regenerates test/fixtures/synthetic-response.json
 test/                        # node --test, no dependencies

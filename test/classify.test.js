@@ -211,3 +211,82 @@ test('rows carry the fields the table shows', () => {
   assert.equal(row.base, 'release/3.5-marine');
   assert.equal(row.ci, 'SUCCESS');
 });
+
+// ---- Branches ---------------------------------------------------------------
+import { classifyBranch, normalizeBranch } from '../src/classify.js';
+import { branch, scanOf } from './helpers.js';
+
+const cb = (opts, scanOpts) => {
+  const scan = scanOf([], scanOpts);
+  return classifyBranch(normalizeBranch(branch(opts), scan), CTX);
+};
+
+test('branch: ahead/behind are mapped from the swapped compare() fields', () => {
+  const b = normalizeBranch(branch({ name: 'x', ahead: 5276, behind: 2 }), scanOf([]));
+  assert.equal(b.ahead, 5276);
+  assert.equal(b.behind, 2);
+});
+
+test('branch dead: PR merged and the tip is not newer than the merge (squash-safe)', () => {
+  const r = cb({ name: 'f', ahead: 12, committedAgo: 24 * 40, prs: [['MERGED', 801, 24 * 38]] });
+  assert.equal(r.bucket, 'dead-branches');
+  assert.match(r.reason, /PR #801 was merged .* can be deleted/);
+});
+
+test('branch unmerged: commits pushed after its PR was merged', () => {
+  const r = cb({ name: 'f', ahead: 3, committedAgo: 24, prs: [['MERGED', 801, 24 * 38]] });
+  assert.equal(r.bucket, 'unmerged-branches');
+  assert.match(r.reason, /newer than its merged PR #801/);
+});
+
+test('branch dead: no commits ahead of base', () => {
+  const r = cb({ name: 'f', ahead: 0, behind: 50 });
+  assert.equal(r.bucket, 'dead-branches');
+  assert.match(r.reason, /No commits ahead of main/);
+});
+
+test('branch unmerged: ahead of base with no PR', () => {
+  const r = cb({ name: 'f', ahead: 4, committedAgo: 24 * 9 });
+  assert.equal(r.bucket, 'unmerged-branches');
+  assert.match(r.reason, /4 commits ahead of main, last commit 9d ago; no PR/);
+});
+
+test('branch unmerged: PR closed without merging is called out', () => {
+  const r = cb({ name: 'f', ahead: 1, prs: [['CLOSED', 790, 100]] });
+  assert.equal(r.bucket, 'unmerged-branches');
+  assert.match(r.reason, /1 commit ahead of main; PR #790 was closed without merging/);
+});
+
+test('branch skipped: open PR, other author, unknown author, default branch, the base itself', () => {
+  assert.equal(cb({ name: 'f', prs: [['OPEN', 5, 0]] }), null);
+  assert.equal(cb({ name: 'f', author: 'alice' }), null);
+  assert.equal(cb({ name: 'f', author: null }), null);
+  assert.equal(cb({ name: 'main', ahead: 0 }), null);
+  assert.equal(cb({ name: 'release/3.5' }, { base: 'release/3.5' }), null);
+});
+
+test('branch with a missing base (compare is null) is unmerged with unknown distance', () => {
+  const r = cb({ name: 'f', noCompare: true });
+  assert.equal(r.bucket, 'unmerged-branches');
+  assert.match(r.reason, /Unknown distance from main/);
+});
+
+test('branch urls keep slashes and encode other characters', () => {
+  const b = normalizeBranch(branch({ name: 'feat/a b#1' }), scanOf([]));
+  assert.equal(b.url, 'https://github.com/Auterion/px4-firmware/tree/feat/a%20b%231');
+});
+
+test('classifyAll includes scanned branches and flags mine / unanswered / noReviewer / diff size', () => {
+  const nodes = [branch({ name: 'wip', ahead: 2 }), branch({ name: 'gone', ahead: 0 })];
+  const mineNoReviewer = pr({ mine: true });
+  mineNoReviewer.additions = 10; mineNoReviewer.deletions = 2;
+  const unanswered = pr({ mine: true, commitAgo: 60, comments: [['bob', 3]], reviewers: ['bob'] });
+  const rows = classifyAll({ prs: [mineNoReviewer, unanswered, pr({})], branchScans: { x: scanOf(nodes) } }, CTX);
+  const by = (f) => rows.find(f);
+  assert.equal(rows.filter((r) => r.kind === 'branch').length, 2);
+  assert.equal(by((r) => r.name === 'gone').bucket, 'dead-branches');
+  assert.equal(by((r) => r.id === mineNoReviewer.id).noReviewer, true);
+  assert.equal(by((r) => r.id === mineNoReviewer.id).additions, 10);
+  assert.equal(by((r) => r.id === unanswered.id).unanswered, true);
+  assert.equal(rows.filter((r) => r.kind === 'pr' && !r.mine).length, 1);
+});

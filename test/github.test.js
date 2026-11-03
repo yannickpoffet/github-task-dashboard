@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { GitHubError, fetchDashboard, graphql } from '../src/github.js';
+import { GitHubError, fetchDashboard, graphql, scanBranches } from '../src/github.js';
 import { DEFAULT_CONFIG, normalizeConfig } from '../src/config.js';
 import { buildQuery, buildSearchStrings } from '../src/queries.js';
 import { classifyAll } from '../src/classify.js';
@@ -136,4 +136,47 @@ test('errors: rate limit', async () => {
 test('errors: network failure', async () => {
   const impl = async () => { throw new TypeError('fetch failed'); };
   await assert.rejects(graphql('t', 'q', {}, { fetchImpl: impl }), (e) => e.kind === 'network');
+});
+
+test('scanBranches: resolves the default branch first when base is empty, then pages branches', async () => {
+  const node = (n) => ({ name: n, target: null, associatedPullRequests: { nodes: [] }, compare: { aheadBy: 0, behindBy: 1 } });
+  const f = fakeFetch(
+    { body: { data: { rateLimit: {}, repository: { nameWithOwner: 'O/r', defaultBranchRef: { name: 'dev' } } } } },
+    (call) => {
+      assert.deepEqual([call.variables.base, call.variables.after], ['dev', null]);
+      return { body: { data: { rateLimit: {}, repository: { nameWithOwner: 'O/r', defaultBranchRef: { name: 'dev' },
+        refs: { pageInfo: { hasNextPage: true, endCursor: 'C1' }, nodes: [node('a')] } } } } };
+    },
+    (call) => {
+      assert.equal(call.variables.after, 'C1');
+      return { body: { data: { rateLimit: {}, repository: { nameWithOwner: 'O/r', defaultBranchRef: { name: 'dev' },
+        refs: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [node('b')] } } } } };
+    },
+  );
+  const r = await scanBranches('tok', 'o/r', '', { fetchImpl: f.impl });
+  assert.equal(r.requestCount, 3);
+  assert.equal(r.scan.repo, 'O/r');
+  assert.equal(r.scan.base, 'dev');
+  assert.equal(r.scan.totalSeen, 2);
+  assert.equal(r.scan.truncated, false);
+});
+
+test('scanBranches: uses the given base, caps at 3 pages and reports truncation', async () => {
+  const page = () => ({ body: { data: { rateLimit: {}, repository: { nameWithOwner: 'O/r', defaultBranchRef: { name: 'main' },
+    refs: { pageInfo: { hasNextPage: true, endCursor: 'C' }, nodes: [{ name: 'x', target: null, associatedPullRequests: { nodes: [] }, compare: { aheadBy: 0, behindBy: 1 } }] } } } } });
+  const f = fakeFetch(page());
+  const r = await scanBranches('tok', 'O/r', 'release/3.5-marine', { fetchImpl: f.impl });
+  assert.equal(f.calls.length, 3);
+  assert.equal(f.calls[0].variables.base, 'release/3.5-marine');
+  assert.equal(r.scan.truncated, true);
+});
+
+test('scanBranches: unknown base branch yields a warning, unreadable repo an error, bad name is rejected', async () => {
+  const f = fakeFetch({ body: { data: { rateLimit: {}, repository: { nameWithOwner: 'O/r', defaultBranchRef: { name: 'main' },
+    refs: { pageInfo: { hasNextPage: false }, nodes: [{ name: 'x', target: null, associatedPullRequests: { nodes: [] }, compare: null }] } } } } });
+  const r = await scanBranches('t', 'O/r', 'nope', { fetchImpl: f.impl });
+  assert.match(r.warnings[0].message, /Base branch "nope" was not found/);
+  const g = fakeFetch({ body: { data: { rateLimit: {}, repository: null } } });
+  await assert.rejects(scanBranches('t', 'O/r', 'main', { fetchImpl: g.impl }), /not found or this token cannot read it/);
+  await assert.rejects(scanBranches('t', 'no-slash', 'main'), /not an owner\/repo name/);
 });

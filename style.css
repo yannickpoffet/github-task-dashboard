@@ -21,7 +21,10 @@ code { background: var(--chip-bg); padding: 1px 4px; border-radius: 4px; }
 
 .bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .bar h1 { font-size: 16px; margin: 0; }
-.foot { border-top: 1px solid var(--border); border-bottom: 0; margin-top: 24px; font-size: 12px; }
+.foot { margin-top: 24px; font-size: 12px; }
+.foot .bar { border-top: 1px solid var(--border); border-bottom: 0; }
+.foot p { margin: 0; padding: 0 16px 14px; }
+.small { font-size: 12px; }
 
 button, select, input, textarea { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; }
 button { cursor: pointer; }
@@ -45,9 +48,6 @@ section.bucket, details.bucket { margin: 16px 0; background: var(--surface); bor
 .bucket > h2, .bucket > summary { margin: 0; padding: 10px 14px; font-size: 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); cursor: default; }
 .bucket > summary { cursor: pointer; }
 .bucket > h2 .count, .bucket > summary .count { background: var(--chip-bg); border-radius: 10px; padding: 0 8px; font-size: 12px; font-weight: 600; }
-.bucket.waiting-on-you { border-left: 4px solid var(--bad); }
-.bucket.ready-to-merge { border-left: 4px solid var(--ok); }
-.bucket.needs-finishing { border-left: 4px solid var(--warn); }
 
 .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; padding: 9px 14px; border-top: 1px solid var(--border); }
 .row:first-of-type { border-top: 0; }
@@ -72,3 +72,38 @@ dialog label { display: block; margin: 10px 0; }
 dialog textarea, dialog input:not([type=checkbox]) { display: block; width: 100%; margin-top: 4px; }
 dialog menu { display: flex; gap: 8px; justify-content: flex-end; padding: 0; margin: 14px 0 0; }
 dialog menu button:first-child { margin-right: auto; }
+
+/* row status stripe */
+.row { border-left: 4px solid transparent; }
+.row.tone-red { border-left-color: var(--bad); }
+.row.tone-amber { border-left-color: var(--warn); }
+.row.tone-green { border-left-color: var(--ok); }
+.row.tone-grey { border-left-color: var(--border); }
+.chip.own { background: var(--chip-bg); color: var(--accent); font-weight: 600; }
+.chip.mono { font-variant-numeric: tabular-nums; }
+
+/* quick filter chips */
+.chiprows { padding: 0 16px; display: grid; gap: 6px; }
+.chiprow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chiplabel { color: var(--muted); font-size: 12px; min-width: 34px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip-btn { display: inline-flex; gap: 6px; align-items: center; border-radius: 14px; padding: 2px 10px; font-size: 13px; }
+.chip-btn .n { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.chip-btn[aria-pressed=true] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip-btn[aria-pressed=true] .n { color: #fff; opacity: .85; }
+
+/* sticky section bar */
+.secnav { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; overflow-x: auto; padding: 8px 16px; margin-top: 10px; background: var(--bg); border-bottom: 1px solid var(--border); }
+.navlink { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; padding: 3px 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); font-size: 13px; }
+a.navlink:hover { border-color: var(--accent); text-decoration: none; }
+.navlink .n { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.navlink.dim { opacity: .5; }
+section.bucket, details.bucket { scroll-margin-top: 56px; }
+
+/* branch scan panel */
+.scan { margin: 12px 16px 0; padding: 8px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.scan summary { cursor: pointer; font-weight: 600; }
+.scan-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.scan-row input { flex: 1 1 220px; }
+.scan-row select { max-width: 260px; }
+.scan p { margin: 8px 0 0; }

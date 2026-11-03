@@ -181,3 +181,17 @@ GitHub yet; see below.
   24 h); 2 on first run; +1 per extra page for any search above 100 results (max 4 extra pages).
 - **Probe output**: raw response is git-ignored; a scrubbed copy is written for fixtures.
 - **`?demo=1`** serves a synthetic fixture through the real fetch/classify/render path.
+
+### Added after the first live run (ported from the earlier "Orca Triage" artifact)
+
+- Sticky section bar with live counts; Show chips and Type chips with counts that follow the other
+  filters (`src/filters.js`, unit-tested); row status stripe; pills `yours`, `review unanswered`,
+  `no reviewer`, `+adds / −dels`; header item/repo counts; footer sources and read-only statement.
+- **Branch scan, on demand** (`scanBranches` in `src/github.js`, rules in `classifyBranch`): one repo
+  at a time, 300 most recently updated branches, one GraphQL request per 100 branches (plus one to
+  resolve the default branch). Merge detection uses the branch tip date versus the PR's merge date,
+  because squash merges leave a merged branch "ahead" forever. `Ref.compare(headRef: base)` is taken
+  from the branch's side, so `aheadBy` is the branch's *behind* count and `behindBy` its *ahead* count.
+- Deliberately not ported: the "Run update now" panel, the artifact db state and quick/full runs
+  (this page fetches live, so there is no snapshot to refresh), and the "details unavailable" pill
+  (GraphQL either returns a PR in full or hides the repo; the SSO and empty-org warnings cover that).

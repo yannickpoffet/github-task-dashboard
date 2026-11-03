@@ -1,11 +1,14 @@
 // GraphQL client: one fetch, pagination, rate-limit info, readable errors.
 // Works in the browser and Node 20+ (global fetch).
 
-import { ALIASES, VIEWER_QUERY, buildQuery, buildSearchStrings } from './queries.js';
+import {
+  ALIASES, BRANCH_QUERY, DEFAULT_BRANCH_QUERY, VIEWER_QUERY, buildQuery, buildSearchStrings,
+} from './queries.js';
 import { dedupeById } from './classify.js';
 
 export const ENDPOINT = 'https://api.github.com/graphql';
 const MAX_EXTRA_PAGES = 4; // beyond the first 100, per alias (search caps at 1000 anyway)
+const MAX_BRANCH_PAGES = 3; // 100 branches per page, newest commit first
 
 /** kind: 'no-token' | 'bad-token' | 'sso' | 'rate-limit' | 'network' | 'graphql' | 'http' */
 export class GitHubError extends Error {
@@ -134,3 +137,52 @@ export async function fetchDashboard(token, config, session = null, opts = {}) {
 }
 
 const argsOf = ({ query, variables }) => [query, variables];
+
+/**
+ * On-demand branch scan of one repo against `base` (default branch when empty).
+ * Looks at the 300 most recently committed branches. Returns the raw nodes plus
+ * { repo, base, defaultBranch, scannedAt, truncated, totalSeen } for the cache.
+ */
+export async function scanBranches(token, repoFullName, base = '', opts = {}) {
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repoFullName || '')) {
+    throw new GitHubError('graphql', `"${repoFullName}" is not an owner/repo name.`);
+  }
+  const [owner, name] = repoFullName.split('/');
+  let requestCount = 0;
+  let rateLimit = null;
+  const warnings = [];
+  const track = (r) => { requestCount++; rateLimit = r.rateLimit || rateLimit; warnings.push(...r.warnings); return r; };
+
+  base = (base || '').trim();
+  if (!base) {
+    const r = track(await graphql(token, DEFAULT_BRANCH_QUERY, { owner, name }, opts));
+    base = r.data.repository?.defaultBranchRef?.name;
+    if (!r.data.repository) throw new GitHubError('graphql', `${repoFullName} was not found or this token cannot read it.`);
+    if (!base) throw new GitHubError('graphql', `${repoFullName} has no default branch (empty repo?).`);
+  }
+
+  const nodes = [];
+  let after = null;
+  let defaultBranch = null;
+  let repo = repoFullName;
+  let truncated = false;
+  for (let page = 0; page < MAX_BRANCH_PAGES; page++) {
+    const r = track(await graphql(token, BRANCH_QUERY, { owner, name, base, after }, opts));
+    const data = r.data.repository;
+    if (!data) throw new GitHubError('graphql', `${repoFullName} was not found or this token cannot read it.`);
+    repo = data.nameWithOwner || repo;
+    defaultBranch = data.defaultBranchRef?.name || defaultBranch;
+    nodes.push(...(data.refs?.nodes || []));
+    const pi = data.refs?.pageInfo;
+    if (!pi?.hasNextPage) break;
+    after = pi.endCursor;
+    if (page === MAX_BRANCH_PAGES - 1) truncated = true;
+  }
+  if (nodes.length && nodes.every((n) => n.compare == null)) {
+    warnings.push({ kind: 'graphql', message: `Base branch "${base}" was not found in ${repo}, so ahead/behind counts are unavailable.` });
+  }
+  return {
+    scan: { repo, base, defaultBranch, scannedAt: Date.now(), truncated, totalSeen: nodes.length, nodes },
+    rateLimit, warnings, requestCount,
+  };
+}

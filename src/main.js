@@ -2,6 +2,7 @@
 
 import { DEFAULT_CONFIG } from './config.js';
 import { classifyAll, timeAgo } from './classify.js';
+import { diffRows } from './changes.js';
 import { SHOW, TYPES, showCounts, typeCounts } from './filters.js';
 import { GitHubError, fetchDashboard, scanBranches } from './github.js';
 import {
@@ -15,7 +16,8 @@ const dom = {
   text: $('f-text'), repo: $('f-repo'), author: $('f-author'), sort: $('f-sort'),
   chipsShow: $('chips-show'), chipsType: $('chips-type'), nav: $('sections'),
   footRepos: $('foot-repos'), footRate: $('foot-rate'),
-  scanDetails: $('scan-details'), scanRepo: $('scan-repo'), scanBase: $('scan-base'), scanRun: $('scan-run'), scanStatus: $('scan-status'),
+  changes: $('changes'), changesList: $('changes-list'),
+  scanDetails: $('scan-details'), scanRepo: $('scan-repo'), scanWho: $('scan-who'), scanBase: $('scan-base'), scanRun: $('scan-run'), scanStatus: $('scan-status'),
 };
 const TEAMS_TTL = 24 * 3_600_000;
 
@@ -32,6 +34,10 @@ let lastRows = [];
 const ui = { show: 'all', types: new Set() };
 
 const now = () => demoNow ?? Date.now();
+const ctxFor = (c) => ({
+  me: c.login, teams: c.teams, staleDays: config.staleDays, now: now(),
+  branchWho: config.branchWho, deadBranchDays: config.deadBranchDays,
+});
 
 // ---- banner ---------------------------------------------------------------
 function showBanner(message, { tone = 'bad', url = null, action = null } = {}) {
@@ -77,8 +83,10 @@ function redraw() {
     dom.nav.replaceChildren(); dom.chipsShow.replaceChildren(); dom.chipsType.replaceChildren();
     return;
   }
-  const rows = classifyAll(cache, { me: cache.login, teams: cache.teams, staleDays: config.staleDays, now: now() });
+  const rows = classifyAll(cache, ctxFor(cache));
   lastRows = rows;
+  const waiting = rows.filter((r) => r.bucket === 'waiting-on-you').length;
+  document.title = waiting ? `(${waiting}) Task Dashboard` : 'Task Dashboard';
   const f = filters();
   updateFilterOptions(dom, rows);
   const visible = renderRows(dom.main, rows, f, now());
@@ -119,6 +127,31 @@ function tickClock() {
   else dom.updated.textContent = '';
 }
 
+// ---- changes and notifications ------------------------------------------------
+function showChanges(changes) {
+  dom.changesList.replaceChildren(...changes.slice(0, 12).map((c) => el('li', { text: c.text })));
+  if (changes.length > 12) dom.changesList.append(el('li', { class: 'muted', text: `…and ${changes.length - 12} more` }));
+  dom.changes.hidden = false;
+}
+
+// Desktop notification, only when the user is not already looking at the page.
+function notifyChanges(changes) {
+  if (!changes.length) return;
+  showChanges(changes);
+  if (!config.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!document.hidden && document.hasFocus()) return;
+  const items = changes.length <= 3
+    ? changes.map((c) => ({ body: c.text, tag: `${c.type}:${c.id}` }))
+    : [{ body: `${changes.length} changes, e.g. ${changes[0].text}`, tag: 'summary' }];
+  for (const it of items) {
+    try {
+      const n = new Notification('Task Dashboard', it);
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch { /* some browsers only allow notifications from a service worker */ }
+  }
+}
+$('changes-dismiss').addEventListener('click', () => { dom.changes.hidden = true; });
+
 // ---- fetching -------------------------------------------------------------
 function demoFetch(fixture) {
   return async (_url, init) => {
@@ -149,6 +182,7 @@ async function refresh() {
   try {
     const opts = { signal: controller.signal, ...(demo ? await demoOpts() : {}) };
     const reuse = cache?.login && cache.teams && Date.now() - (cache.teamsFetchedAt || 0) < TEAMS_TTL;
+    const before = cache?.login ? classifyAll(cache, ctxFor(cache)) : null; // what the user last saw
     const r = await fetchDashboard(token, config, reuse ? { login: cache.login, teams: cache.teams } : null, opts);
     cache = {
       ...r, fetchedAt: Date.now(), teamsFetchedAt: reuse ? cache.teamsFetchedAt : Date.now(),
@@ -156,6 +190,9 @@ async function refresh() {
     };
     if (!demo) store.setCache(cache);
     hideBanner();
+    if (before) {
+      notifyChanges(diffRows(before, classifyAll(cache, ctxFor(cache)), { complete: !(r.warnings || []).length }));
+    }
     if (demo) showBanner('Demo mode: synthetic data, no network calls to GitHub.', { tone: 'warn' });
   } catch (e) {
     if (e.name === 'AbortError') return;
@@ -175,7 +212,8 @@ async function refresh() {
 
 // Auto-refresh only while the tab is visible and the cache is older than the interval.
 function maybeAutoRefresh() {
-  if (document.hidden || loading || paused) return;
+  if (loading || paused) return;
+  if (document.hidden && !config.notify) return; // notifications need background refreshes
   if (Date.now() - (cache?.fetchedAt || 0) >= config.refreshMinutes * 60_000) refresh();
 }
 
@@ -188,6 +226,7 @@ function updateScanOptions(rows) {
   for (const s of Object.values(cache?.branchScans || {})) names.set(s.repo.toLowerCase(), s.repo);
   for (const x of config.extraRepos) if (x.includes('/') && !names.has(x.toLowerCase())) names.set(x.toLowerCase(), x);
   fillSelect(dom.scanRepo, [...names.values()].sort((a, b) => a.localeCompare(b)));
+  dom.scanWho.value = config.branchWho;
   dom.scanStatus.textContent = scanStatusText(dom.scanRepo.value);
 }
 
@@ -230,6 +269,12 @@ async function runScan() {
 }
 
 dom.scanRun.addEventListener('click', runScan);
+dom.scanWho.addEventListener('change', () => {
+  config = { ...config, branchWho: dom.scanWho.value };
+  store.setConfig(config);
+  config = store.getConfig();
+  redraw();
+});
 dom.scanRepo.addEventListener('change', () => {
   const sc = scanFor(dom.scanRepo.value);
   dom.scanBase.value = sc ? sc.base : '';
@@ -275,14 +320,30 @@ function openConfigDialog() {
   $('c-repos').value = config.extraRepos.join('\n');
   $('c-stale').value = config.staleDays;
   $('c-refresh').value = config.refreshMinutes;
+  $('c-deadbranch').value = config.deadBranchDays;
+  $('c-notify').checked = config.notify;
+  $('notify-status').textContent = notifyStatus();
   configDialog.showModal();
+}
+function notifyStatus() {
+  if (!('Notification' in window)) return 'Not supported by this browser.';
+  return {
+    granted: 'Permission: allowed.',
+    denied: 'Permission: blocked. Allow notifications for this site in your browser settings.',
+    default: 'Permission will be requested when you save.',
+  }[Notification.permission];
 }
 const lines = (id) => $(id).value.split(/[\s,]+/).filter(Boolean);
 $('config-form').addEventListener('submit', (ev) => {
   ev.preventDefault();
+  const notify = $('c-notify').checked;
+  // Must be requested from this click handler, or the browser ignores it.
+  if (notify && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   store.setConfig({
+    ...config,
     orgs: lines('c-orgs'), extraRepos: lines('c-repos'),
     staleDays: $('c-stale').value, refreshMinutes: $('c-refresh').value,
+    deadBranchDays: $('c-deadbranch').value, notify,
   });
   config = store.getConfig();
   configDialog.close();
@@ -291,7 +352,7 @@ $('config-form').addEventListener('submit', (ev) => {
 });
 $('config-cancel').addEventListener('click', () => configDialog.close());
 $('config-reset').addEventListener('click', () => {
-  store.setConfig(DEFAULT_CONFIG);
+  store.setConfig({ ...DEFAULT_CONFIG, notify: config.notify });
   config = store.getConfig();
   configDialog.close();
   redraw();

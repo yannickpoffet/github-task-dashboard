@@ -659,11 +659,13 @@
               "target": {
                 "committedDate": "2026-11-02T10:00:00.000Z",
                 "author": {
+                  "name": null,
                   "user": {
                     "login": "alice"
                   }
                 }
               },
+              "branchProtectionRule": null,
               "associatedPullRequests": {
                 "nodes": []
               },
@@ -677,11 +679,13 @@
               "target": {
                 "committedDate": "2026-09-23T12:00:00.000Z",
                 "author": {
+                  "name": null,
                   "user": {
                     "login": "me"
                   }
                 }
               },
+              "branchProtectionRule": null,
               "associatedPullRequests": {
                 "nodes": [
                   {
@@ -703,11 +707,13 @@
               "target": {
                 "committedDate": "2026-10-18T12:00:00.000Z",
                 "author": {
+                  "name": null,
                   "user": {
                     "login": "me"
                   }
                 }
               },
+              "branchProtectionRule": null,
               "associatedPullRequests": {
                 "nodes": []
               },
@@ -721,11 +727,13 @@
               "target": {
                 "committedDate": "2026-10-24T12:00:00.000Z",
                 "author": {
+                  "name": null,
                   "user": {
                     "login": "me"
                   }
                 }
               },
+              "branchProtectionRule": null,
               "associatedPullRequests": {
                 "nodes": []
               },
@@ -739,11 +747,13 @@
               "target": {
                 "committedDate": "2026-08-24T12:00:00.000Z",
                 "author": {
+                  "name": null,
                   "user": {
                     "login": "me"
                   }
                 }
               },
+              "branchProtectionRule": null,
               "associatedPullRequests": {
                 "nodes": [
                   {
@@ -765,11 +775,13 @@
               "target": {
                 "committedDate": "2026-10-29T08:00:00.000Z",
                 "author": {
+                  "name": null,
                   "user": {
                     "login": "alice"
                   }
                 }
               },
+              "branchProtectionRule": null,
               "associatedPullRequests": {
                 "nodes": []
               },
@@ -783,11 +795,13 @@
               "target": {
                 "committedDate": "2026-10-29T08:00:00.000Z",
                 "author": {
+                  "name": null,
                   "user": {
                     "login": "me"
                   }
                 }
               },
+              "branchProtectionRule": null,
               "associatedPullRequests": {
                 "nodes": [
                   {

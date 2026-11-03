@@ -102,7 +102,7 @@ export function classifyPR(pr, ctx) {
     const team = pr.requestedTeams.find((t) => teams.has(lc(t)));
     if (team) return hit('waiting-on-you', `Your team ${team} is requested as a reviewer`);
     if (myReview && pr.lastCommitAt > myReview.at) {
-      return hit('waiting-on-you', `Author pushed ${ago(pr.lastCommitAt)}, after your review (${myReview.state.toLowerCase().replace('_', ' ')})`);
+      return hit('waiting-on-you', `Author pushed ${ago(pr.lastCommitAt)}, after your review (${myReview.state.toLowerCase().replace('_', ' ')})`, { eventAt: pr.lastCommitAt });
     }
   } else {
     const mine = Math.max(
@@ -118,7 +118,7 @@ export function classifyPR(pr, ctx) {
         .map((r) => ({ author: r.author, at: r.at, what: r.state === 'CHANGES_REQUESTED' ? 'requested changes' : 'reviewed' })),
     ].sort((a, b) => b.at - a.at);
     if (others.length && others[0].at > mine) {
-      return hit('waiting-on-you', `${others[0].author} ${others[0].what} ${ago(others[0].at)}, after your last activity`, { unanswered: true });
+      return hit('waiting-on-you', `${others[0].author} ${others[0].what} ${ago(others[0].at)}, after your last activity`, { unanswered: true, eventAt: others[0].at });
     }
     const cr = pr.reviews.filter((r) => r.state === 'CHANGES_REQUESTED').sort((a, b) => b.at - a.at)[0];
     if (pr.reviewDecision === 'CHANGES_REQUESTED' && cr && pr.lastCommitAt > cr.at && requested.length === 0) {
@@ -172,6 +172,7 @@ export function normalizeBranch(n, scan) {
   const t = n.target || {};
   const cmp = n.compare;
   const path = String(n.name).split('/').map(encodeURIComponent).join('/');
+  const login = t.author?.user?.login || null;
   return {
     kind: 'branch',
     id: `${scan.repo}:${n.name}`,
@@ -182,7 +183,9 @@ export function normalizeBranch(n, scan) {
     url: `https://github.com/${scan.repo}/tree/${path}`,
     base: scan.base,
     defaultBranch: scan.defaultBranch,
-    author: t.author?.user?.login || null,
+    protected: !!n.branchProtectionRule,
+    authorLogin: login,
+    author: login || t.author?.name || 'unknown',
     committedAt: ts(t.committedDate),
     createdAt: t.committedDate,
     updatedAt: t.committedDate,
@@ -195,13 +198,18 @@ export function normalizeBranch(n, scan) {
   };
 }
 
+// Long-lived branches are never offered for deletion, whatever their age.
+const LONG_LIVED = /^(main|master|develop|dev|stable|trunk|release([/-].*)?|hotfix\/.*)$/i;
+
 /**
- * Branch rules. Only branches whose tip commit is authored by me are considered, and
- * branches with an open PR are skipped (they already show up as PRs). Returns null to skip.
+ * Branch rules. ctx.branchWho: 'mine' (tip commit authored by me) or 'anyone';
+ * ctx.deadBranchDays: unmerged branches idle for longer are dead (0 = off).
+ * Branches with an open PR are skipped (they already show up as PRs). Returns null to skip.
  */
 export function classifyBranch(b, ctx) {
-  if (!b.author || lc(b.author) !== lc(ctx.me)) return null;
-  if (b.name === b.defaultBranch || b.name === b.base) return null;
+  const isMine = !!b.authorLogin && lc(b.authorLogin) === lc(ctx.me);
+  if ((ctx.branchWho || 'mine') === 'mine' && !isMine) return null;
+  if (b.name === b.defaultBranch || b.name === b.base || b.protected || LONG_LIVED.test(b.name)) return null;
   if (b.prs.some((p) => p.state === 'OPEN')) return null;
   const now = ctx.now;
   const merged = b.prs.filter((p) => p.state === 'MERGED').sort((x, y) => y.mergedAt - x.mergedAt)[0];
@@ -216,11 +224,14 @@ export function classifyBranch(b, ctx) {
   }
   const closed = b.prs.filter((p) => p.state === 'CLOSED').sort((x, y) => y.closedAt - x.closedAt)[0];
   const ahead = b.ahead == null ? 'Unknown distance from' : `${b.ahead} commit${b.ahead === 1 ? '' : 's'} ahead of`;
+  const prNote = closed ? `PR #${closed.number} was closed without merging` : 'no PR';
+  const idleDays = (now - b.committedAt) / DAY;
+  if (ctx.deadBranchDays > 0 && idleDays > ctx.deadBranchDays) {
+    return { bucket: 'dead-branches', reason: `No commits for ${Math.floor(idleDays)} days; ${ahead} ${b.base}; ${prNote}` };
+  }
   return {
     bucket: 'unmerged-branches',
-    reason: closed
-      ? `${ahead} ${b.base}; PR #${closed.number} was closed without merging`
-      : `${ahead} ${b.base}, last commit ${timeAgo(b.committedAt, now)}; no PR`,
+    reason: closed ? `${ahead} ${b.base}; ${prNote}` : `${ahead} ${b.base}, last commit ${timeAgo(b.committedAt, now)}; ${prNote}`,
   };
 }
 
@@ -250,7 +261,7 @@ export function classifyAll({ prs = [], issues = [], branchScans = {} }, ctx) {
       if (seen.has(b.id)) continue;
       seen.add(b.id);
       const res = classifyBranch(b, ctx);
-      if (res) rows.push({ ...b, ...res, mine: true });
+      if (res) rows.push({ ...b, ...res, mine: !!b.authorLogin && lc(b.authorLogin) === me });
     }
   }
   return rows;

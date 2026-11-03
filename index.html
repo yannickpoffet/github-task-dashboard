@@ -34,6 +34,11 @@
     </select>
   </section>
 
+  <section id="changes" class="changes" aria-live="polite" hidden>
+    <div class="changes-head"><strong>What changed</strong><button id="changes-dismiss" type="button">Dismiss</button></div>
+    <ul id="changes-list"></ul>
+  </section>
+
   <section class="chiprows" aria-label="Quick filters">
     <div class="chiprow"><span class="chiplabel">Show</span><div id="chips-show" class="chips"></div></div>
     <div class="chiprow"><span class="chiplabel">Type</span><div id="chips-type" class="chips"></div></div>
@@ -43,11 +48,15 @@
     <summary>Branch scan <span class="muted">(on demand, one repo at a time)</span></summary>
     <div class="scan-row">
       <select id="scan-repo" aria-label="Repository to scan"><option value="">Choose a repo…</option></select>
+      <select id="scan-who" aria-label="Whose branches to list">
+        <option value="anyone">Anyone's branches</option>
+        <option value="mine">Only mine</option>
+      </select>
       <input id="scan-base" type="text" placeholder="base branch (default branch if empty)" aria-label="Base branch" spellcheck="false" autocomplete="off">
       <button id="scan-run" type="button">Scan my branches</button>
     </div>
     <p id="scan-status" class="muted small" aria-live="polite"></p>
-    <p class="muted small">Looks at the 300 most recently updated branches whose latest commit is yours. Branches with an open PR are skipped. Results appear under "Dead branches" and "Unmerged work, no PR".</p>
+    <p class="muted small">Looks at the 300 most recently updated branches. Branches with an open PR, the default and base branches, and long-lived ones (<code>release/*</code>, <code>hotfix/*</code>, <code>develop</code>, protected) are skipped. "Only mine" keeps branches whose latest commit is yours. A branch is dead when its PR was merged, it has nothing ahead of the base, or (Settings) it has had no commits for N days. Results appear under "Dead branches" and "Unmerged work, no PR".</p>
   </details>
 
   <nav id="sections" class="secnav" aria-label="Sections"></nav>
@@ -86,6 +95,10 @@
         <textarea id="c-repos" rows="3" spellcheck="false"></textarea></label>
       <label>Stale after (days) <input id="c-stale" type="number" min="1" max="365"></label>
       <label>Auto-refresh (minutes) <input id="c-refresh" type="number" min="1" max="120"></label>
+      <label>Unmerged branch is dead after (days, 0 = off) <input id="c-deadbranch" type="number" min="0" max="3650"></label>
+      <label class="check"><input id="c-notify" type="checkbox"> Browser notifications when something changes</label>
+      <p id="notify-status" class="muted small"></p>
+      <p class="muted small">Notifies about new items waiting on you, new comments or pushes on them, your PRs becoming ready to merge, CI turning red and your PRs closing. It only works while a tab with this page is open (it then also refreshes in the background) and only when the page is not the focused tab.</p>
       <menu>
         <button type="button" id="config-reset">Reset to defaults</button>
         <button type="button" id="config-cancel">Cancel</button>

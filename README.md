@@ -52,10 +52,23 @@ visible and pauses after an auth or rate-limit error until you press Refresh.
   chips (PRs, Issues, Branches; pick several).
 - **Branch scan** (on demand, because scanning is the slow part): open "Branch scan", pick a repo,
   optionally a base branch (default branch if empty) and press the button. It looks at the 300 most
-  recently updated branches whose latest commit is yours, skips branches with an open PR, and
-  fills "Dead branches" (merged PR, or nothing ahead of base) and "Unmerged work, no PR". Results
-  are kept in your browser across refreshes. Note: a branch tip whose commit author has no
-  GitHub-linked email is not recognised as yours.
+  recently updated branches and skips branches with an open PR, the default and base branches, and
+  long-lived ones (`release/*`, `hotfix/*`, `develop`, `main`, `master`, `stable`, or anything with a
+  branch protection rule). A branch is **dead** when its PR was merged and nothing newer was pushed,
+  when it has no commits ahead of the base, or when it has had no commits for N days (Settings,
+  default 60, 0 = off). Other unmerged branches go under "Unmerged work, no PR". The scan picker
+  chooses *Anyone's branches* (default, each row shows the last committer) or *Only mine* (tip commit
+  authored by you; a commit whose email is not linked to your GitHub account is not recognised as
+  yours). Switching the picker needs no new scan. Results are kept in your browser across refreshes.
+- **Change notifications**: after every refresh the page compares what you see now with what you saw
+  last (also across reloads) and shows a "What changed" panel for: new items waiting on you, newer
+  comments or pushes on items already waiting, your PRs becoming ready to merge, your CI turning red
+  and your PRs closing or merging. The tab title shows the "Waiting on you" count, e.g. `(3) Task
+  Dashboard`. Turn on *Browser notifications* in Settings to also get desktop notifications. Limits:
+  they only work while a tab with the page is open (it then refreshes in the background every N
+  minutes) and are skipped while that tab is focused; they cannot fire when the page is closed. For
+  that you would need a scheduled GitHub Action posting to Slack or email, which needs secrets and is
+  not part of this page.
 - Light/dark theme, works at phone width, read-only (nothing is merged, closed or deleted).
 
 Not covered: Actions failures, Dependabot and security alerts. Rules and deviations from the
@@ -65,7 +78,7 @@ original plan are in `PLAN.md`; the code is `src/classify.js` and `src/filters.j
 
 ```
 index.html  style.css
-src/   config.js github.js queries.js classify.js filters.js render.js store.js main.js
+src/   config.js github.js queries.js classify.js filters.js changes.js render.js store.js main.js
 scripts/probe.mjs            # run the real query once, save + scrub the response, report empty fields
 scripts/make-synthetic.mjs   # regenerates test/fixtures/synthetic-response.json
 test/                        # node --test, no dependencies

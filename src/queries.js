@@ -115,7 +115,8 @@ export const BRANCH_QUERY = `query Branches($owner: String!, $name: String!, $ba
       pageInfo { hasNextPage endCursor }
       nodes {
         name
-        target { ... on Commit { committedDate author { user { login } } } }
+        target { ... on Commit { committedDate author { name user { login } } } }
+        branchProtectionRule { id }
         associatedPullRequests(first: 5, states: [OPEN, MERGED, CLOSED]) {
           nodes { number state mergedAt closedAt baseRefName }
         }

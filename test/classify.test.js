@@ -216,9 +216,9 @@ test('rows carry the fields the table shows', () => {
 import { classifyBranch, normalizeBranch } from '../src/classify.js';
 import { branch, scanOf } from './helpers.js';
 
-const cb = (opts, scanOpts) => {
+const cb = (opts, scanOpts, ctx = {}) => {
   const scan = scanOf([], scanOpts);
-  return classifyBranch(normalizeBranch(branch(opts), scan), CTX);
+  return classifyBranch(normalizeBranch(branch(opts), scan), { ...CTX, ...ctx });
 };
 
 test('branch: ahead/behind are mapped from the swapped compare() fields', () => {
@@ -289,4 +289,49 @@ test('classifyAll includes scanned branches and flags mine / unanswered / noRevi
   assert.equal(by((r) => r.id === mineNoReviewer.id).additions, 10);
   assert.equal(by((r) => r.id === unanswered.id).unanswered, true);
   assert.equal(rows.filter((r) => r.kind === 'pr' && !r.mine).length, 1);
+});
+
+// ---- Branch options: whose branches, and the age rule ----------------------------
+test('branchWho "mine" (and the default) skips other people\'s branches; "anyone" lists them', () => {
+  assert.equal(cb({ name: 'f', author: 'alice', ahead: 0 }), null);
+  assert.equal(cb({ name: 'f', author: 'alice', ahead: 0 }, {}, { branchWho: 'mine' }), null);
+  const r = cb({ name: 'f', author: 'alice', ahead: 0 }, {}, { branchWho: 'anyone' });
+  assert.equal(r.bucket, 'dead-branches');
+});
+
+test('branchWho "anyone" still lists branches whose author has no GitHub login', () => {
+  const scan = scanOf([]);
+  const b = normalizeBranch(branch({ name: 'f', author: null, authorName: 'Jane Dev', ahead: 0 }), scan);
+  assert.equal(b.author, 'Jane Dev');
+  assert.equal(classifyBranch(b, { ...CTX, branchWho: 'anyone' }).bucket, 'dead-branches');
+  assert.equal(classifyBranch(b, { ...CTX, branchWho: 'mine' }), null);
+});
+
+test('age rule: unmerged branch idle longer than deadBranchDays is dead, with the facts in the reason', () => {
+  const r = cb({ name: 'f', ahead: 7, committedAgo: 24 * 90 }, {}, { deadBranchDays: 60 });
+  assert.equal(r.bucket, 'dead-branches');
+  assert.match(r.reason, /No commits for 90 days; 7 commits ahead of main; no PR/);
+  const closed = cb({ name: 'f', ahead: 1, committedAgo: 24 * 90, prs: [['CLOSED', 790, 24 * 89]] }, {}, { deadBranchDays: 60 });
+  assert.match(closed.reason, /PR #790 was closed without merging/);
+});
+
+test('age rule: recent branches stay unmerged, 0 disables the rule, default is off in pure code', () => {
+  assert.equal(cb({ name: 'f', ahead: 7, committedAgo: 24 * 30 }, {}, { deadBranchDays: 60 }).bucket, 'unmerged-branches');
+  assert.equal(cb({ name: 'f', ahead: 7, committedAgo: 24 * 900 }, {}, { deadBranchDays: 0 }).bucket, 'unmerged-branches');
+  assert.equal(cb({ name: 'f', ahead: 7, committedAgo: 24 * 900 }).bucket, 'unmerged-branches');
+});
+
+test('long-lived and protected branches are never offered for deletion', () => {
+  const ctx = { branchWho: 'anyone', deadBranchDays: 1 };
+  for (const name of ['release/3.5-marine', 'release-3.5', 'hotfix/urgent', 'develop', 'stable', 'master']) {
+    assert.equal(cb({ name, ahead: 0, committedAgo: 24 * 400 }, {}, ctx), null, name);
+  }
+  assert.equal(cb({ name: 'feature/x', ahead: 0, protectedRule: true }, {}, ctx), null);
+  assert.equal(cb({ name: 'feature/x', ahead: 0 }, {}, ctx).bucket, 'dead-branches');
+});
+
+test('rows: others\' branches are not "mine"; mine are', () => {
+  const nodes = [branch({ name: 'a', author: 'alice', ahead: 0 }), branch({ name: 'b', author: 'me', ahead: 0 })];
+  const rows = classifyAll({ branchScans: { x: scanOf(nodes) } }, { ...CTX, branchWho: 'anyone' });
+  assert.deepEqual(rows.map((r) => [r.name, r.mine, r.author]), [['a', false, 'alice'], ['b', true, 'me']]);
 });

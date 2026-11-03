@@ -107,3 +107,11 @@ section.bucket, details.bucket { scroll-margin-top: 56px; }
 .scan-row input { flex: 1 1 220px; }
 .scan-row select { max-width: 260px; }
 .scan p { margin: 8px 0 0; }
+
+/* what changed */
+.changes { margin: 12px 16px 0; padding: 8px 14px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); }
+.changes-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.changes ul { margin: 6px 0 2px; padding-left: 18px; }
+.changes li { margin: 2px 0; overflow-wrap: anywhere; }
+dialog label.check { display: flex; align-items: center; gap: 8px; }
+dialog label.check input { display: inline-block; width: auto; margin: 0; }

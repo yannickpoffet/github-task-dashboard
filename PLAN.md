@@ -195,3 +195,15 @@ GitHub yet; see below.
 - Deliberately not ported: the "Run update now" panel, the artifact db state and quick/full runs
   (this page fetches live, so there is no snapshot to refresh), and the "details unavailable" pill
   (GraphQL either returns a PR in full or hides the repo; the SSO and empty-org warnings cover that).
+
+### Branch options and change notifications
+
+- Branch scan can list *anyone's* branches (default) or only mine; the scan stores every branch and
+  the filter is applied when classifying. Dead = merged PR with no newer commits, nothing ahead of the
+  base, or no commits for `deadBranchDays` (default 60). Long-lived names and protected branches are
+  never offered for deletion. `branchProtectionRule` is only visible to users with enough access on the
+  repo, so the name pattern is the fallback.
+- Notifications are in-page only (`src/changes.js`, unit-tested): "What changed" panel, tab-title
+  count, optional `Notification` API while a tab is open. A "no longer open" message is suppressed when
+  the fetch had warnings (SSO or truncated results), to avoid false alarms. Out of scope: notifications
+  while the page is closed (needs a GitHub Actions cron job plus a Slack/email secret).

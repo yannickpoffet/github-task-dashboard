@@ -57,10 +57,11 @@ export function issue({ author = 'me', assignees = ['me'], repo = 'Auterion/exam
  * of view; the API reports them swapped (compare is taken with the branch as the base).
  * prs: [[state, number, hoursAgoMerged|hoursAgoClosed]]
  */
-export function branch({ name, author = 'me', committedAgo = 100, ahead = 3, behind = 0, prs = [], noCompare = false } = {}) {
+export function branch({ name, author = 'me', authorName = null, committedAgo = 100, ahead = 3, behind = 0, prs = [], noCompare = false, protectedRule = false } = {}) {
   return {
     name,
-    target: { committedDate: ago(committedAgo), author: { user: author ? { login: author } : null } },
+    target: { committedDate: ago(committedAgo), author: { name: authorName, user: author ? { login: author } : null } },
+    branchProtectionRule: protectedRule ? { id: 'BPR_1' } : null,
     associatedPullRequests: {
       nodes: prs.map(([state, number, h]) => ({
         number, state, baseRefName: 'main',

@@ -5,6 +5,9 @@ export const DEFAULT_CONFIG = {
   extraRepos: ['PX4/PX4-Autopilot'], // "owner/repo" or a bare org name
   staleDays: 30,
   refreshMinutes: 5,
+  deadBranchDays: 60,   // an unmerged branch with no commits for this long counts as dead (0 = off)
+  branchWho: 'anyone',  // 'anyone' | 'mine': whose branches to list after a scan
+  notify: false,        // browser notifications when something changes (needs permission)
 };
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*(\/[A-Za-z0-9._-]+)?$/;
@@ -23,5 +26,8 @@ export function normalizeConfig(raw) {
     extraRepos: list(r.extraRepos, DEFAULT_CONFIG.extraRepos),
     staleDays: num(r.staleDays, DEFAULT_CONFIG.staleDays, 1, 365),
     refreshMinutes: num(r.refreshMinutes, DEFAULT_CONFIG.refreshMinutes, 1, 120),
+    deadBranchDays: num(r.deadBranchDays, DEFAULT_CONFIG.deadBranchDays, 0, 3650),
+    branchWho: r.branchWho === 'mine' ? 'mine' : 'anyone',
+    notify: r.notify === true,
   };
 }

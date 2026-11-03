@@ -1,0 +1,11 @@
+{
+  "name": "task-dashboard",
+  "private": true,
+  "type": "module",
+  "description": "Static cross-repo GitHub task dashboard. No runtime dependencies, no build step.",
+  "scripts": {
+    "test": "node --test",
+    "probe": "node scripts/probe.mjs",
+    "serve": "npx serve ."
+  }
+}

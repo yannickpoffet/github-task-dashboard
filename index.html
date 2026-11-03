@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.github.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <title>Task Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="bar">
+    <h1>Task Dashboard</h1>
+    <span id="user" class="muted"></span>
+    <span class="spacer"></span>
+    <span id="updated" class="muted" aria-live="polite"></span>
+    <button id="refresh" type="button" title="Refresh now">Refresh</button>
+    <button id="open-config" type="button">Settings</button>
+  </header>
+
+  <div id="banner" role="alert" hidden></div>
+
+  <section class="filters" aria-label="Filters">
+    <input id="f-text" type="search" placeholder="Search title, repo, author, reason" aria-label="Search">
+    <select id="f-repo" aria-label="Repository"><option value="">All repos</option></select>
+    <select id="f-bucket" aria-label="Bucket"><option value="">All buckets</option></select>
+    <select id="f-author" aria-label="Author"><option value="">All authors</option></select>
+    <select id="f-sort" aria-label="Sort by age">
+      <option value="oldest">Oldest first</option>
+      <option value="newest">Newest first</option>
+    </select>
+  </section>
+
+  <main id="main"></main>
+
+  <footer class="bar foot">
+    <span id="foot-repos" class="muted"></span>
+    <span class="spacer"></span>
+    <span id="foot-rate" class="muted"></span>
+  </footer>
+
+  <dialog id="token-dialog">
+    <form method="dialog" id="token-form">
+      <h2>GitHub token</h2>
+      <p>Paste a classic personal access token with <code>repo</code> and <code>read:org</code> scopes, then authorize it for your organization (<em>Configure SSO</em>). It is stored only in this browser's <code>localStorage</code> and sent only to <code>api.github.com</code>.</p>
+      <p id="token-error" class="err" hidden></p>
+      <input id="token-input" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_..." aria-label="Token">
+      <menu>
+        <button type="button" id="token-forget" class="danger">Forget token</button>
+        <button type="button" id="token-cancel">Cancel</button>
+        <button type="submit" id="token-save" value="save">Save</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog id="config-dialog">
+    <form method="dialog" id="config-form">
+      <h2>Settings</h2>
+      <label>Organizations <small>(one per line; searched for anything involving you)</small>
+        <textarea id="c-orgs" rows="3" spellcheck="false"></textarea></label>
+      <label>Extra repos or orgs <small>(<code>owner/repo</code> or an org name, one per line)</small>
+        <textarea id="c-repos" rows="3" spellcheck="false"></textarea></label>
+      <label>Stale after (days) <input id="c-stale" type="number" min="1" max="365"></label>
+      <label>Auto-refresh (minutes) <input id="c-refresh" type="number" min="1" max="120"></label>
+      <menu>
+        <button type="button" id="config-reset">Reset to defaults</button>
+        <button type="button" id="config-cancel">Cancel</button>
+        <button type="submit" id="config-save" value="save">Save</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

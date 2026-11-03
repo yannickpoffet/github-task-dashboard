@@ -1,0 +1,178 @@
+// Pure classification: raw GraphQL nodes -> rows with { bucket, reason }.
+// No DOM, no network, no clock (callers pass ctx.now), so it is unit-testable.
+//
+// ctx = { me: 'login', teams: ['auterion/orca', ...], staleDays: 30, now: Date.now() }
+
+export const BUCKETS = [
+  { id: 'waiting-on-you', label: 'Waiting on you' },
+  { id: 'ready-to-merge', label: 'Ready to merge' },
+  { id: 'needs-finishing', label: 'Needs finishing' },
+  { id: 'stale', label: 'Stale' },
+  { id: 'waiting-on-others', label: 'Waiting on others' },
+  { id: 'issues', label: 'Issues' },
+  { id: 'watching', label: 'Watching (no action)' },
+];
+
+const DAY = 86_400_000;
+const lc = (s) => (s ? String(s).toLowerCase() : '');
+const ts = (s) => (s ? Date.parse(s) || 0 : 0);
+const isBot = (login) => /\[bot\]$/i.test(login || '');
+
+export function dedupeById(nodes) {
+  const seen = new Map();
+  for (const n of nodes || []) if (n && n.id && !seen.has(n.id)) seen.set(n.id, n);
+  return [...seen.values()];
+}
+
+export function timeAgo(then, now) {
+  const m = Math.max(0, Math.round((now - then) / 60_000));
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 48) return `${h}h ago`;
+  return `${Math.round(h / 24)}d ago`;
+}
+
+/** Flatten a raw PullRequest node into the fields the rules need. */
+export function normalizePR(n) {
+  const commit = n.commits?.nodes?.[0]?.commit;
+  const reviewers = (n.reviewRequests?.nodes || []).map((r) => r?.requestedReviewer).filter(Boolean);
+  return {
+    kind: 'pr',
+    id: n.id,
+    repo: n.repository?.nameWithOwner || '?',
+    number: n.number,
+    title: n.title || '',
+    url: n.url || '',
+    author: n.author?.login || 'ghost',
+    base: n.baseRefName || '',
+    head: n.headRefName || '',
+    isDraft: !!n.isDraft,
+    createdAt: n.createdAt,
+    updatedAt: n.updatedAt,
+    mergeable: n.mergeable || 'UNKNOWN',
+    reviewDecision: n.reviewDecision || null,
+    ci: commit?.statusCheckRollup?.state || 'NONE',
+    lastCommitAt: ts(commit?.committedDate),
+    requestedUsers: reviewers.filter((r) => r.login).map((r) => r.login),
+    requestedTeams: reviewers.filter((r) => r.slug).map((r) => r.combinedSlug || r.slug),
+    reviews: (n.latestReviews?.nodes || []).map((r) => ({
+      author: r.author?.login || 'ghost', state: r.state, at: ts(r.submittedAt),
+    })),
+    comments: (n.comments?.nodes || []).map((c) => ({ author: c.author?.login || 'ghost', at: ts(c.createdAt) })),
+  };
+}
+
+export function normalizeIssue(n) {
+  return {
+    kind: 'issue',
+    id: n.id,
+    repo: n.repository?.nameWithOwner || '?',
+    number: n.number,
+    title: n.title || '',
+    url: n.url || '',
+    author: n.author?.login || 'ghost',
+    createdAt: n.createdAt,
+    updatedAt: n.updatedAt,
+    assignees: (n.assignees?.nodes || []).map((a) => a.login),
+  };
+}
+
+/** Returns { bucket, reason } for a normalized PR. Rules are checked top to bottom. */
+export function classifyPR(pr, ctx) {
+  const me = lc(ctx.me);
+  const teams = new Set((ctx.teams || []).map(lc));
+  const now = ctx.now;
+  const ago = (t) => timeAgo(t, now);
+  const isMine = lc(pr.author) === me;
+  const myReview = pr.reviews.find((r) => lc(r.author) === me && r.state !== 'PENDING');
+  const requested = [...pr.requestedUsers, ...pr.requestedTeams];
+  const hit = (bucket, reason) => ({ bucket, reason });
+
+  // --- Waiting on you -------------------------------------------------------
+  if (pr.requestedUsers.some((u) => lc(u) === me)) {
+    return hit('waiting-on-you', 'You are requested as a reviewer');
+  }
+  if (!isMine) {
+    // Team requests on my own PRs are usually CODEOWNERS noise, so only count others' PRs.
+    const team = pr.requestedTeams.find((t) => teams.has(lc(t)));
+    if (team) return hit('waiting-on-you', `Your team ${team} is requested as a reviewer`);
+    if (myReview && pr.lastCommitAt > myReview.at) {
+      return hit('waiting-on-you', `Author pushed ${ago(pr.lastCommitAt)}, after your review (${myReview.state.toLowerCase().replace('_', ' ')})`);
+    }
+  } else {
+    const mine = Math.max(
+      pr.lastCommitAt,
+      ...pr.comments.filter((c) => lc(c.author) === me).map((c) => c.at),
+      ...pr.reviews.filter((r) => lc(r.author) === me).map((r) => r.at),
+    );
+    // Approvals are not a request for action: they feed "Ready to merge" instead.
+    const others = [
+      ...pr.comments.filter((c) => lc(c.author) !== me && !isBot(c.author)).map((c) => ({ ...c, what: 'commented' })),
+      ...pr.reviews
+        .filter((r) => lc(r.author) !== me && !isBot(r.author) && !['APPROVED', 'PENDING', 'DISMISSED'].includes(r.state))
+        .map((r) => ({ author: r.author, at: r.at, what: r.state === 'CHANGES_REQUESTED' ? 'requested changes' : 'reviewed' })),
+    ].sort((a, b) => b.at - a.at);
+    if (others.length && others[0].at > mine) {
+      return hit('waiting-on-you', `${others[0].author} ${others[0].what} ${ago(others[0].at)}, after your last activity`);
+    }
+    const cr = pr.reviews.filter((r) => r.state === 'CHANGES_REQUESTED').sort((a, b) => b.at - a.at)[0];
+    if (pr.reviewDecision === 'CHANGES_REQUESTED' && cr && pr.lastCommitAt > cr.at && requested.length === 0) {
+      return hit('waiting-on-you', 'Changes were requested and you pushed since, but have not re-requested review');
+    }
+  }
+
+  // --- Others' PRs with nothing left for me --------------------------------
+  if (!isMine) {
+    return myReview
+      ? hit('waiting-on-others', `You reviewed (${myReview.state.toLowerCase().replace('_', ' ')}); waiting for the author`)
+      : hit('watching', 'Mentioned or commented; no action detected');
+  }
+
+  // --- My PRs ---------------------------------------------------------------
+  const approved = pr.reviewDecision === 'APPROVED';
+  const ciGreen = pr.ci === 'SUCCESS' || pr.ci === 'NONE';
+  if (!pr.isDraft && approved && ciGreen && pr.mergeable === 'MERGEABLE') {
+    return hit('ready-to-merge', 'Approved, CI green, no conflicts');
+  }
+
+  const problems = [];
+  if (pr.isDraft) problems.push('draft');
+  if (pr.ci === 'FAILURE' || pr.ci === 'ERROR') problems.push('CI failing');
+  if (pr.mergeable === 'CONFLICTING') problems.push('merge conflicts');
+  if (requested.length === 0 && !approved) problems.push('no reviewer requested');
+  if (problems.length) return hit('needs-finishing', problems.join(', ').replace(/^./, (c) => c.toUpperCase()));
+
+  const idleDays = (now - ts(pr.updatedAt)) / DAY;
+  if (idleDays > ctx.staleDays) return hit('stale', `No activity for ${Math.floor(idleDays)} days`);
+
+  if (approved) {
+    const why = pr.mergeable === 'UNKNOWN' ? 'merge status still being computed' : 'CI still running';
+    return hit('waiting-on-others', `Approved; ${why}`);
+  }
+  if (requested.length) return hit('waiting-on-others', `Review requested from ${requested.join(', ')}; nothing new since`);
+  return hit('waiting-on-others', 'No pending action detected');
+}
+
+export function classifyIssue(issue, ctx) {
+  const me = lc(ctx.me);
+  const assigned = issue.assignees.some((a) => lc(a) === me);
+  const authored = lc(issue.author) === me;
+  const reason = assigned && authored ? 'Assigned to you, and you opened it'
+    : assigned ? 'Assigned to you' : 'Opened by you';
+  return { bucket: 'issues', reason };
+}
+
+/** Raw nodes -> flat list of display rows, one per unique PR/issue. */
+export function classifyAll({ prs = [], issues = [] }, ctx) {
+  const rows = [];
+  for (const n of dedupeById(prs)) {
+    const pr = normalizePR(n);
+    rows.push({ ...pr, ...classifyPR(pr, ctx) });
+  }
+  for (const n of dedupeById(issues)) {
+    const issue = normalizeIssue(n);
+    rows.push({ ...issue, ...classifyIssue(issue, ctx) });
+  }
+  return rows;
+}

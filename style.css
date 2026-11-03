@@ -1,0 +1,74 @@
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --text: #1b1f24; --muted: #5d6673; --border: #d7dce2;
+  --accent: #1f6feb; --ok: #1a7f37; --warn: #9a6700; --bad: #cf222e;
+  --ok-bg: #dafbe1; --warn-bg: #fff8c5; --bad-bg: #ffebe9; --chip-bg: #eaeef2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117; --surface: #161b22; --text: #e6edf3; --muted: #8b949e; --border: #30363d;
+    --accent: #58a6ff; --ok: #3fb950; --warn: #d29922; --bad: #f85149;
+    --ok-bg: #12261e; --warn-bg: #2d2305; --bad-bg: #2d1214; --chip-bg: #21262d;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code { background: var(--chip-bg); padding: 1px 4px; border-radius: 4px; }
+.muted { color: var(--muted); }
+.err { color: var(--bad); }
+.spacer { flex: 1; }
+
+.bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.bar h1 { font-size: 16px; margin: 0; }
+.foot { border-top: 1px solid var(--border); border-bottom: 0; margin-top: 24px; font-size: 12px; }
+
+button, select, input, textarea { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; }
+button { cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:disabled { opacity: .55; cursor: progress; }
+button.danger { color: var(--bad); }
+button[type=submit] { background: var(--accent); color: #fff; border-color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+#banner { margin: 12px 16px 0; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--bad); background: var(--bad-bg); }
+#banner.warn { border-color: var(--warn); background: var(--warn-bg); }
+#banner a { font-weight: 600; }
+
+.filters { display: flex; gap: 8px; padding: 12px 16px; flex-wrap: wrap; }
+.filters input { flex: 1 1 240px; min-width: 160px; }
+.filters select { max-width: 220px; }
+
+main { padding: 0 16px; }
+.empty { padding: 48px 0; text-align: center; color: var(--muted); }
+section.bucket, details.bucket { margin: 16px 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.bucket > h2, .bucket > summary { margin: 0; padding: 10px 14px; font-size: 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); cursor: default; }
+.bucket > summary { cursor: pointer; }
+.bucket > h2 .count, .bucket > summary .count { background: var(--chip-bg); border-radius: 10px; padding: 0 8px; font-size: 12px; font-weight: 600; }
+.bucket.waiting-on-you { border-left: 4px solid var(--bad); }
+.bucket.ready-to-merge { border-left: 4px solid var(--ok); }
+.bucket.needs-finishing { border-left: 4px solid var(--warn); }
+
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; padding: 9px 14px; border-top: 1px solid var(--border); }
+.row:first-of-type { border-top: 0; }
+.row .title { font-weight: 600; overflow-wrap: anywhere; }
+.row .repo { color: var(--muted); font-weight: 400; margin-right: 6px; }
+.row .reason { grid-column: 1; color: var(--muted); font-size: 13px; }
+.row .meta { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; align-self: start; }
+.chip { background: var(--chip-bg); border-radius: 10px; padding: 1px 8px; font-size: 12px; white-space: nowrap; }
+.chip.ok { background: var(--ok-bg); color: var(--ok); }
+.chip.warn { background: var(--warn-bg); color: var(--warn); }
+.chip.bad { background: var(--bad-bg); color: var(--bad); }
+.chip.base-release { outline: 1px solid var(--accent); }
+@media (max-width: 640px) {
+  .row { grid-template-columns: 1fr; }
+  .row .meta { grid-column: 1; grid-row: auto; justify-content: flex-start; }
+}
+
+dialog { max-width: 520px; width: calc(100% - 32px); background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+dialog::backdrop { background: rgba(0, 0, 0, .45); }
+dialog h2 { margin: 0 0 8px; font-size: 16px; }
+dialog label { display: block; margin: 10px 0; }
+dialog textarea, dialog input:not([type=checkbox]) { display: block; width: 100%; margin-top: 4px; }
+dialog menu { display: flex; gap: 8px; justify-content: flex-end; padding: 0; margin: 14px 0 0; }
+dialog menu button:first-child { margin-right: auto; }

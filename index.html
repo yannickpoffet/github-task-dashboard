@@ -53,10 +53,11 @@
         <option value="mine">Only mine</option>
       </select>
       <input id="scan-base" type="text" placeholder="base branch (default branch if empty)" aria-label="Base branch" spellcheck="false" autocomplete="off">
-      <button id="scan-run" type="button">Scan my branches</button>
+      <button id="scan-run" type="button">Scan branches</button>
+      <button id="scan-clear" type="button" title="Forget all stored scan results">Clear scans</button>
     </div>
     <p id="scan-status" class="muted small" aria-live="polite"></p>
-    <p class="muted small">Looks at the 300 most recently updated branches. Branches with an open PR, the default and base branches, and long-lived ones (<code>release/*</code>, <code>hotfix/*</code>, <code>develop</code>, protected) are skipped. "Only mine" keeps branches whose latest commit is yours. A branch is dead when its PR was merged, it has nothing ahead of the base, or (Settings) it has had no commits for N days. Results appear under "Dead branches" and "Unmerged work, no PR".</p>
+    <p class="muted small">Only the repo chosen here is listed; earlier scans stay stored and reappear when you pick that repo again. Looks at the 300 most recently updated branches. Branches with an open PR, the default and base branches, and long-lived ones (<code>release/*</code>, <code>hotfix/*</code>, <code>develop</code>, protected) are skipped. "Only mine" keeps branches whose latest commit is yours. A branch is dead when its PR was merged, it has nothing ahead of the base, or (Settings) it has had no commits for N days. </p>
   </details>
 
   <nav id="sections" class="secnav" aria-label="Sections"></nav>

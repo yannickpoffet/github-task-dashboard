@@ -59,7 +59,7 @@ visible and pauses after an auth or rate-limit error until you press Refresh.
   default 60, 0 = off). Other unmerged branches go under "Unmerged work, no PR". The scan picker
   chooses *Anyone's branches* (default, each row shows the last committer) or *Only mine* (tip commit
   authored by you; a commit whose email is not linked to your GitHub account is not recognised as
-  yours). Switching the picker needs no new scan. Results are kept in your browser across refreshes.
+  yours). Switching the picker needs no new scan. Only the repo chosen in the picker is listed; earlier scans stay stored in your browser (also across refreshes) and reappear when you pick that repo again. "Clear scans" forgets them all.
 - **Change notifications**: after every refresh the page compares what you see now with what you saw
   last (also across reloads) and shows a "What changed" panel for: new items waiting on you, newer
   comments or pushes on items already waiting, your PRs becoming ready to merge, your CI turning red

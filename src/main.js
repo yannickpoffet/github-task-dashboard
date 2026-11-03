@@ -37,6 +37,7 @@ const now = () => demoNow ?? Date.now();
 const ctxFor = (c) => ({
   me: c.login, teams: c.teams, staleDays: config.staleDays, now: now(),
   branchWho: config.branchWho, deadBranchDays: config.deadBranchDays,
+  branchRepo: (c.activeScan || '').toLowerCase(),
 });
 
 // ---- banner ---------------------------------------------------------------
@@ -187,6 +188,7 @@ async function refresh() {
     cache = {
       ...r, fetchedAt: Date.now(), teamsFetchedAt: reuse ? cache.teamsFetchedAt : Date.now(),
       branchScans: cache?.branchScans || {}, // scans are on demand, so keep them across refreshes
+      activeScan: cache?.activeScan || null,
     };
     if (!demo) store.setCache(cache);
     hideBanner();
@@ -226,6 +228,7 @@ function updateScanOptions(rows) {
   for (const s of Object.values(cache?.branchScans || {})) names.set(s.repo.toLowerCase(), s.repo);
   for (const x of config.extraRepos) if (x.includes('/') && !names.has(x.toLowerCase())) names.set(x.toLowerCase(), x);
   fillSelect(dom.scanRepo, [...names.values()].sort((a, b) => a.localeCompare(b)));
+  if (cache?.activeScan && names.has(cache.activeScan.toLowerCase())) dom.scanRepo.value = names.get(cache.activeScan.toLowerCase());
   dom.scanWho.value = config.branchWho;
   dom.scanStatus.textContent = scanStatusText(dom.scanRepo.value);
 }
@@ -253,6 +256,7 @@ async function runScan() {
     cache = {
       ...cache,
       branchScans: { ...(cache.branchScans || {}), [r.scan.repo]: r.scan },
+      activeScan: r.scan.repo,
       rateLimit: r.rateLimit || cache.rateLimit,
     };
     if (!demo) store.setCache(cache);
@@ -276,9 +280,22 @@ dom.scanWho.addEventListener('change', () => {
   redraw();
 });
 dom.scanRepo.addEventListener('change', () => {
+  // Picking a repo switches the branch list to that repo's stored scan (or to none).
+  if (!cache) return;
   const sc = scanFor(dom.scanRepo.value);
   dom.scanBase.value = sc ? sc.base : '';
+  cache = { ...cache, activeScan: sc ? sc.repo : null };
+  if (!demo) store.setCache(cache);
+  redraw();
   dom.scanStatus.textContent = scanStatusText(dom.scanRepo.value);
+});
+$('scan-clear').addEventListener('click', () => {
+  if (!cache) return;
+  cache = { ...cache, branchScans: {}, activeScan: null };
+  if (!demo) store.setCache(cache);
+  dom.scanBase.value = '';
+  redraw();
+  dom.scanStatus.textContent = 'Stored scans cleared.';
 });
 
 // ---- dialogs --------------------------------------------------------------

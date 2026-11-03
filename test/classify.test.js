@@ -335,3 +335,14 @@ test('rows: others\' branches are not "mine"; mine are', () => {
   const rows = classifyAll({ branchScans: { x: scanOf(nodes) } }, { ...CTX, branchWho: 'anyone' });
   assert.deepEqual(rows.map((r) => [r.name, r.mine, r.author]), [['a', false, 'alice'], ['b', true, 'me']]);
 });
+
+test('ctx.branchRepo limits the branch list to one scan; undefined lists all', () => {
+  const a = scanOf([branch({ name: 'a1', ahead: 0 })], { repo: 'Auterion/PX4_firmware_private' });
+  const b = scanOf([branch({ name: 'b1', ahead: 0 })], { repo: 'Auterion/PX4_firmware_private_Kraken' });
+  const scans = { a, b };
+  const names = (ctx) => classifyAll({ branchScans: scans }, { ...CTX, branchWho: 'anyone', ...ctx }).map((r) => r.name);
+  assert.deepEqual(names({}), ['a1', 'b1']);
+  assert.deepEqual(names({ branchRepo: 'auterion/px4_firmware_private_kraken' }), ['b1']);
+  assert.deepEqual(names({ branchRepo: 'auterion/px4_firmware_private' }), ['a1']);
+  assert.deepEqual(names({ branchRepo: '' }), []);
+});

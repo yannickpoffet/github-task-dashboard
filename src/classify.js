@@ -237,7 +237,8 @@ export function classifyBranch(b, ctx) {
 
 /**
  * Raw nodes -> flat list of display rows, one per unique PR/issue/branch.
- * branchScans = { 'owner/repo': { repo, base, defaultBranch, nodes } } from on-demand scans.
+ * branchScans = { 'owner/repo': { repo, base, defaultBranch, nodes } } from on-demand scans;
+ * ctx.branchRepo (lowercase owner/repo, '' = none) selects which scan's branches are listed.
  */
 export function classifyAll({ prs = [], issues = [], branchScans = {} }, ctx) {
   const me = lc(ctx.me);
@@ -256,6 +257,8 @@ export function classifyAll({ prs = [], issues = [], branchScans = {} }, ctx) {
   }
   const seen = new Set();
   for (const scan of Object.values(branchScans || {})) {
+    // ctx.branchRepo (when given) limits the list to the repo currently chosen in the scan picker.
+    if (ctx.branchRepo !== undefined && scan.repo.toLowerCase() !== ctx.branchRepo) continue;
     for (const n of scan.nodes || []) {
       const b = normalizeBranch(n, scan);
       if (seen.has(b.id)) continue;

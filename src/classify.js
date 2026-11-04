@@ -35,6 +35,17 @@ export function timeAgo(then, now) {
   return `${Math.round(h / 24)}d ago`;
 }
 
+/**
+ * GitHub leaves reviewDecision empty when the repo does not require reviews, even if someone
+ * approved or asked for changes. Derive it from each reviewer's latest review in that case.
+ */
+function decisionFromReviews(reviews) {
+  const states = reviews.map((r) => r.state);
+  if (states.includes('CHANGES_REQUESTED')) return 'CHANGES_REQUESTED';
+  if (states.includes('APPROVED')) return 'APPROVED';
+  return null;
+}
+
 /** Flatten a raw PullRequest node into the fields the rules need. */
 export function normalizePR(n) {
   const commit = n.commits?.nodes?.[0]?.commit;
@@ -55,7 +66,7 @@ export function normalizePR(n) {
     additions: n.additions ?? null,
     deletions: n.deletions ?? null,
     mergeable: n.mergeable || 'UNKNOWN',
-    reviewDecision: n.reviewDecision || null,
+    reviewDecision: n.reviewDecision || decisionFromReviews(n.latestReviews?.nodes || []),
     ci: commit?.statusCheckRollup?.state || 'NONE',
     lastCommitAt: ts(commit?.committedDate),
     requestedUsers: reviewers.filter((r) => r.login).map((r) => r.login),

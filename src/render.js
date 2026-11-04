@@ -43,8 +43,15 @@ function reviewChip(row) {
   switch (row.reviewDecision) {
     case 'APPROVED': return chip('approved', 'ok');
     case 'CHANGES_REQUESTED': return chip('changes requested', 'bad');
-    case 'REVIEW_REQUIRED': return chip('review required', 'warn');
-    default: return chip('no review yet');
+    default: {
+      // No decision yet: say who was asked, so "no review yet" is never mistaken for "no reviewer".
+      const asked = [...(row.requestedUsers || []).map((u) => `@${u}`), ...(row.requestedTeams || [])];
+      if (asked.length) {
+        const shown = asked.slice(0, 2).join(', ') + (asked.length > 2 ? ` +${asked.length - 2}` : '');
+        return chip(`awaiting ${shown}`, 'warn');
+      }
+      return chip(row.reviewDecision === 'REVIEW_REQUIRED' ? 'review required' : 'no reviewer asked');
+    }
   }
 }
 const diffChip = (plus, minus) => chip(`+${NUM.format(plus)} / −${NUM.format(minus)}`, '', 'mono');

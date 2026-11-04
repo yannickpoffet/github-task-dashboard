@@ -379,3 +379,17 @@ test('inline thread: resolved threads are ignored', () => {
   const r = run(pr({ mine: true, commitAgo: 60, reviewers: ['bob'], threads: [['bob', 2, true]] }));
   assert.equal(r.bucket, 'waiting-on-others');
 });
+
+// ---- review decision when the repo does not require reviews -------------------------
+test('reviewDecision is derived from latest reviews when GitHub leaves it empty', () => {
+  const dec = (node) => normalizePR(node).reviewDecision;
+  assert.equal(dec(pr({ reviews: [['bob', 'APPROVED', 5]] })), 'APPROVED');
+  assert.equal(dec(pr({ reviews: [['bob', 'APPROVED', 5], ['carol', 'CHANGES_REQUESTED', 4]] })), 'CHANGES_REQUESTED');
+  assert.equal(dec(pr({ reviews: [['bob', 'COMMENTED', 5]] })), null);
+  assert.equal(dec(pr({})), null);
+  assert.equal(dec(pr({ decision: 'REVIEW_REQUIRED', reviews: [['bob', 'APPROVED', 5]] })), 'REVIEW_REQUIRED'); // GitHub's value wins
+});
+
+test('my approved PR in a repo without required reviews is still ready to merge', () => {
+  assert.equal(bucket(pr({ mine: true, reviews: [['bob', 'APPROVED', 5]], commitAgo: 50 })), 'ready-to-merge');
+});

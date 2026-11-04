@@ -33,7 +33,7 @@ test('message: tokens are filled, link is a Slack link, title is escaped so it c
   const node = pr({ mine: true, reviewers: ['bob'], updatedAgo: 24 * 3, repo: 'Auterion/px4' });
   node.title = 'Fix <!channel> & "quotes"';
   const msg = buildMessage(DEFAULT_NUDGE_TEMPLATE, rowOf(node), 'bob', { now: NOW, me: 'me' });
-  assert.match(msg, /^Hi bob, friendly ping:/);
+  assert.match(msg, /^Hi bob, me is waiting on your review of </);
   assert.match(msg, new RegExp(`<https://github.com/Auterion/px4/pull/${node.number}\\|Auterion/px4#${node.number}>`));
   assert.ok(msg.includes('Fix &lt;!channel&gt; &amp; "quotes"'));
   assert.ok(!msg.includes('<!channel>'));
@@ -101,4 +101,13 @@ test('sendSlackDm errors: input checks, Slack error codes, blocked requests', as
   await assert.rejects(sendSlackDm(TOKEN, 'U0123ABCDEF', 'x', { fetchImpl: slackFetch({ ok: false, error: 'weird' }).impl }), /Slack error: weird/);
   const blocked = async () => { throw new TypeError('Failed to fetch'); };
   await assert.rejects(sendSlackDm(TOKEN, 'U0123ABCDEF', 'x', { fetchImpl: blocked }), (e) => e.kind === 'blocked');
+});
+
+test('config: sender name is trimmed and capped; a saved copy of the old default template is upgraded', () => {
+  assert.equal(normalizeConfig({ senderName: '  Yannick  ' }).senderName, 'Yannick');
+  assert.equal(normalizeConfig({ senderName: 'x'.repeat(200) }).senderName.length, 60);
+  assert.equal(normalizeConfig({}).senderName, '');
+  const old = 'Hi {reviewer}, friendly ping: I am waiting on your review of <{url}|{repo}#{number}> "{title}" (no activity for {age}). Could you take a look when you have a moment? Thanks!';
+  assert.equal(normalizeConfig({ nudgeTemplate: old }).nudgeTemplate, DEFAULT_NUDGE_TEMPLATE);
+  assert.ok(DEFAULT_NUDGE_TEMPLATE.includes('{me} is waiting'));
 });

@@ -56,6 +56,7 @@ Notes and limits:
   scopes to the two above, and remove it with Settings → type `remove` in the Slack token field.
 - The page sends the token in the request body so the browser needs no preflight. If Slack or the
   browser still blocks the call, the dialog says so and copies the message instead.
+- If the message comes from a bot, set "Your name in messages" in Settings so the reviewer knows who is asking (`{me}`; defaults to your GitHub login).
 - Placeholders in the message: `{reviewer} {me} {repo} {number} {title} {url} {age} {base}`. Titles are
   escaped, so a PR title cannot ping a channel.
 

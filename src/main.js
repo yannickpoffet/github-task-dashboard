@@ -323,7 +323,7 @@ function openNudge(row, login) {
   $('nudge-title').textContent = `Nudge @${login}`;
   $('nudge-sub').textContent = `${row.repo}#${row.number} ${row.title}`;
   $('nudge-slackid').value = slackIdFor(login, slackFile, store.getSlackMap());
-  $('nudge-text').value = buildMessage(config.nudgeTemplate, row, login, { now: now(), me: cache.login });
+  $('nudge-text').value = buildMessage(config.nudgeTemplate, row, login, { now: now(), me: config.senderName || cache.login });
   const nudges = store.getNudges();
   if (withinCooldown(nudges, row, login, now())) {
     nudgeStatus(`You already nudged @${login} about this PR ${Math.round(hoursSinceNudge(nudges, row, login, now()))}h ago (wait ${NUDGE_COOLDOWN_HOURS}h between nudges).`, 'bad');
@@ -412,6 +412,7 @@ function openConfigDialog() {
   $('c-deadbranch').value = config.deadBranchDays;
   $('c-notify').checked = config.notify;
   $('c-nudge-hours').value = config.nudgeAfterHours;
+  $('c-sender').value = config.senderName;
   $('c-nudge-template').value = config.nudgeTemplate;
   $('c-slack-token').value = '';
   $('slack-status').textContent = store.getSlackToken()
@@ -446,7 +447,7 @@ $('config-form').addEventListener('submit', (ev) => {
     orgs: lines('c-orgs'), extraRepos: lines('c-repos'),
     staleDays: $('c-stale').value, refreshMinutes: $('c-refresh').value,
     deadBranchDays: $('c-deadbranch').value, notify,
-    nudgeAfterHours: $('c-nudge-hours').value, nudgeTemplate: $('c-nudge-template').value,
+    nudgeAfterHours: $('c-nudge-hours').value, senderName: $('c-sender').value, nudgeTemplate: $('c-nudge-template').value,
   });
   config = store.getConfig();
   configDialog.close();

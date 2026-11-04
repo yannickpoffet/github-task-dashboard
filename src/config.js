@@ -1,6 +1,11 @@
 // Defaults and validation for the user-editable config.
 
+// Sent by a bot, so the message must say who is asking. {me} is "Your name in messages" (or the GitHub login).
 export const DEFAULT_NUDGE_TEMPLATE =
+  'Hi {reviewer}, {me} is waiting on your review of <{url}|{repo}#{number}> "{title}" ' +
+  '(no activity for {age}). Could you take a look when you have a moment? Thanks!';
+// Earlier default; a saved copy of it is upgraded to the current default.
+const OLD_NUDGE_TEMPLATE =
   'Hi {reviewer}, friendly ping: I am waiting on your review of <{url}|{repo}#{number}> "{title}" ' +
   '(no activity for {age}). Could you take a look when you have a moment? Thanks!';
 
@@ -14,6 +19,7 @@ export const DEFAULT_CONFIG = {
   notify: false,        // browser notifications when something changes (needs permission)
   nudgeAfterHours: 24,  // show the Slack nudge button once a PR has been quiet this long
   nudgeTemplate: DEFAULT_NUDGE_TEMPLATE,
+  senderName: '',       // how you appear in nudge messages; empty = your GitHub login
 };
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*(\/[A-Za-z0-9._-]+)?$/;
@@ -37,6 +43,7 @@ export function normalizeConfig(raw) {
     notify: r.notify === true,
     nudgeAfterHours: num(r.nudgeAfterHours, DEFAULT_CONFIG.nudgeAfterHours, 0, 720),
     nudgeTemplate: typeof r.nudgeTemplate === 'string' && r.nudgeTemplate.trim() && r.nudgeTemplate.length <= 1000
-      ? r.nudgeTemplate : DEFAULT_NUDGE_TEMPLATE,
+      && r.nudgeTemplate !== OLD_NUDGE_TEMPLATE ? r.nudgeTemplate : DEFAULT_NUDGE_TEMPLATE,
+    senderName: typeof r.senderName === 'string' ? r.senderName.trim().slice(0, 60) : '',
   };
 }

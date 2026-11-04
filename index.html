@@ -102,6 +102,8 @@
       <label>Slack token <small>(optional; for the Nudge button)</small>
         <input id="c-slack-token" type="password" autocomplete="off" spellcheck="false" placeholder="xoxb-... or xoxp-..."></label>
       <p id="slack-status" class="muted small"></p>
+      <label>Your name in messages <small>(empty = your GitHub login)</small>
+        <input id="c-sender" type="text" maxlength="60" autocomplete="off" placeholder="Yannick"></label>
       <label>Show Nudge after the PR has been quiet for (hours) <input id="c-nudge-hours" type="number" min="0" max="720"></label>
       <label>Nudge message <small>(placeholders: {reviewer} {me} {repo} {number} {title} {url} {age} {base})</small>
         <textarea id="c-nudge-template" rows="4" spellcheck="false"></textarea></label>

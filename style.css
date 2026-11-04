@@ -115,3 +115,10 @@ section.bucket, details.bucket { scroll-margin-top: 56px; }
 .changes li { margin: 2px 0; overflow-wrap: anywhere; }
 dialog label.check { display: flex; align-items: center; gap: 8px; }
 dialog label.check input { display: inline-block; width: auto; margin: 0; }
+
+/* nudge */
+.row .actions { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+button.nudge { font-size: 12px; padding: 2px 10px; border-radius: 14px; }
+button.nudge .n { color: var(--muted); }
+#nudge-status.ok { color: var(--ok); }
+#nudge-status.bad { color: var(--bad); }

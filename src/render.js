@@ -69,15 +69,29 @@ function pills(row, now) {
   return meta;
 }
 
-function rowEl(row, now) {
+function rowEl(row, now, hooks) {
   const label = row.kind === 'branch' ? `⎇ ${row.title}` : `#${row.number} ${row.title}`;
   const link = el('a', { text: label, rel: 'noopener noreferrer' });
   const href = safeUrl(row.url);
   if (href) { link.href = href; link.target = '_blank'; }
-  return el('div', { class: `row tone-${toneOf(row)}` },
+  const node = el('div', { class: `row tone-${toneOf(row)}` },
     el('div', { class: 'title' }, el('span', { class: 'repo', text: row.repo }), link),
     pills(row, now),
     el('div', { class: 'reason', text: row.reason }));
+  const targets = hooks?.nudgeTargets ? hooks.nudgeTargets(row) : [];
+  if (targets.length) {
+    const box = el('div', { class: 'actions' });
+    for (const login of targets) {
+      const sent = hooks.nudgedHoursAgo(row, login);
+      const b = el('button', { type: 'button', class: 'nudge', title: `Send ${login} a Slack message about this PR` },
+        el('span', { text: `Nudge @${login}` }));
+      if (sent !== null) b.append(el('span', { class: 'n', text: ` · nudged ${sent < 1 ? 'just now' : sent < 48 ? `${Math.round(sent)}h ago` : `${Math.round(sent / 24)}d ago`}` }));
+      b.addEventListener('click', () => hooks.onNudge(row, login));
+      box.append(b);
+    }
+    node.append(box);
+  }
+  return node;
 }
 
 /** Fill a <select> with sorted unique values, keeping the current selection if still present. */
@@ -121,7 +135,7 @@ export function renderSectionNav(nav, visible) {
 }
 
 /** Render all sections into `main`. Returns the visible rows. */
-export function renderRows(main, rows, filters, now) {
+export function renderRows(main, rows, filters, now, hooks = null) {
   const sign = filters.sort === 'newest' ? -1 : 1;
   const visible = filterRows(rows, filters);
   main.replaceChildren();
@@ -130,7 +144,7 @@ export function renderRows(main, rows, filters, now) {
       .sort((x, y) => sign * (Date.parse(x.updatedAt) - Date.parse(y.updatedAt)));
     if (!items.length) continue;
     const head = [el('span', { text: b.label }), el('span', { class: 'count', text: String(items.length) })];
-    const body = items.map((r) => rowEl(r, now));
+    const body = items.map((r) => rowEl(r, now, hooks));
     if (b.id === 'watching') {
       const d = el('details', { class: `bucket ${b.id}`, id: `sec-${b.id}` }, el('summary', {}, ...head), ...body);
       d.open = opened.has(b.id);

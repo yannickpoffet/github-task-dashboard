@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light dark">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.github.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+        content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://api.github.com https://slack.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
   <title>Task Dashboard</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -99,11 +99,34 @@
       <label>Unmerged branch is dead after (days, 0 = off) <input id="c-deadbranch" type="number" min="0" max="3650"></label>
       <label class="check"><input id="c-notify" type="checkbox"> Browser notifications when something changes</label>
       <p id="notify-status" class="muted small"></p>
+      <label>Slack token <small>(optional; for the Nudge button)</small>
+        <input id="c-slack-token" type="password" autocomplete="off" spellcheck="false" placeholder="xoxb-... or xoxp-..."></label>
+      <p id="slack-status" class="muted small"></p>
+      <label>Show Nudge after the PR has been quiet for (hours) <input id="c-nudge-hours" type="number" min="0" max="720"></label>
+      <label>Nudge message <small>(placeholders: {reviewer} {me} {repo} {number} {title} {url} {age} {base})</small>
+        <textarea id="c-nudge-template" rows="4" spellcheck="false"></textarea></label>
       <p class="muted small">Notifies about new items waiting on you, new comments or pushes on them, your PRs becoming ready to merge, CI turning red and your PRs closing. It only works while a tab with this page is open (it then also refreshes in the background) and only when the page is not the focused tab.</p>
       <menu>
         <button type="button" id="config-reset">Reset to defaults</button>
         <button type="button" id="config-cancel">Cancel</button>
         <button type="submit" id="config-save" value="save">Save</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog id="nudge-dialog">
+    <form method="dialog" id="nudge-form">
+      <h2 id="nudge-title">Nudge</h2>
+      <p id="nudge-sub" class="muted small"></p>
+      <label>Slack member ID <small>(profile &rarr; ... &rarr; Copy member ID)</small>
+        <input id="nudge-slackid" type="text" spellcheck="false" autocomplete="off" placeholder="U0123ABCDEF"></label>
+      <label>Message <small>(Slack formatting)</small>
+        <textarea id="nudge-text" rows="5"></textarea></label>
+      <p id="nudge-status" class="small" aria-live="polite"></p>
+      <menu>
+        <button type="button" id="nudge-cancel">Close</button>
+        <button type="button" id="nudge-copy">Copy</button>
+        <button type="submit" id="nudge-send" value="send">Send on Slack</button>
       </menu>
     </form>
   </dialog>

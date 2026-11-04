@@ -31,6 +31,34 @@ access to `api.github.com`.
 - The token lives only in this origin's `localStorage`. Settings → "Forget token" (the token
   dialog) clears it and the cached data. Use a read-only token with an expiry.
 
+## Nudging a reviewer on Slack
+
+PRs of yours that are waiting on individual reviewers (and have been quiet for N hours, default 24)
+get a **Nudge @login** button. It opens a dialog with an editable message (template in Settings) and a
+**Send on Slack** button that DMs the reviewer; **Copy** works without any Slack setup. A "nudged 3h
+ago" label stays on the row and the dialog warns before you nudge the same person again within 24 h.
+Team review requests get no button (a team cannot be DMed).
+
+Setup (once):
+1. Create a Slack app at <https://api.slack.com/apps> (From scratch, your workspace). Under *OAuth &
+   Permissions* add the scopes `chat:write` and `im:write`, as **Bot Token Scopes** (message comes from
+   the bot) or **User Token Scopes** (message comes from you), then *Install to Workspace*. Your Slack
+   admin may need to approve it.
+2. Copy the token (`xoxb-...` for a bot, `xoxp-...` for a user) into Settings → Slack token.
+3. Tell the page who is who: put `"github-login": "U0123ABCDEF"` pairs in `slack-users.json` (Slack:
+   profile → ⋯ → Copy member ID), or just type the ID in the Nudge dialog once; it is remembered in your
+   browser. The file lives in this repo, so on a public repo it lists names and Slack IDs: keep it
+   short or use the dialog instead.
+
+Notes and limits:
+- The Slack token is stored in this browser's `localStorage` like the GitHub token and is sent only to
+  `slack.com` (the Content-Security-Policy allows nothing else). It can post messages, so keep the
+  scopes to the two above, and remove it with Settings → type `remove` in the Slack token field.
+- The page sends the token in the request body so the browser needs no preflight. If Slack or the
+  browser still blocks the call, the dialog says so and copies the message instead.
+- Placeholders in the message: `{reviewer} {me} {repo} {number} {title} {url} {age} {base}`. Titles are
+  escaped, so a PR title cannot ping a channel.
+
 ## Settings (saved in localStorage)
 
 Organizations searched for anything involving you, extra repos/orgs (e.g. `PX4/PX4-Autopilot`),
@@ -78,7 +106,8 @@ original plan are in `PLAN.md`; the code is `src/classify.js` and `src/filters.j
 
 ```
 index.html  style.css
-src/   config.js github.js queries.js classify.js filters.js changes.js render.js store.js main.js
+src/   config.js github.js queries.js classify.js filters.js changes.js nudge.js slack.js render.js store.js main.js
+slack-users.json             # GitHub login -> Slack member ID
 scripts/probe.mjs            # run the real query once, save + scrub the response, report empty fields
 scripts/make-synthetic.mjs   # regenerates test/fixtures/synthetic-response.json
 test/                        # node --test, no dependencies

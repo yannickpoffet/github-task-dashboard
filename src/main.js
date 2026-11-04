@@ -6,6 +6,10 @@ import { diffRows } from './changes.js';
 import { SHOW, TYPES, showCounts, typeCounts } from './filters.js';
 import { GitHubError, fetchDashboard, scanBranches } from './github.js';
 import {
+  buildMessage, hoursSinceNudge, nudgeKey, nudgeTargets, slackIdFor, withinCooldown, NUDGE_COOLDOWN_HOURS,
+} from './nudge.js';
+import { SlackError, isSlackId, isSlackToken, sendSlackDm } from './slack.js';
+import {
   el, fillSelect, renderChips, renderRows, renderSectionNav, safeUrl, updateFilterOptions,
 } from './render.js';
 import * as store from './store.js';
@@ -34,6 +38,8 @@ let lastRows = [];
 const ui = { show: 'all', types: new Set() };
 
 const now = () => demoNow ?? Date.now();
+let slackFile = {}; // slack-users.json shipped with the page: GitHub login -> Slack member ID
+fetch('slack-users.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : {})).then((j) => { slackFile = j; }).catch(() => {});
 const ctxFor = (c) => ({
   me: c.login, teams: c.teams, staleDays: config.staleDays, now: now(),
   branchWho: config.branchWho, deadBranchDays: config.deadBranchDays,
@@ -90,7 +96,7 @@ function redraw() {
   document.title = waiting ? `(${waiting}) Task Dashboard` : 'Task Dashboard';
   const f = filters();
   updateFilterOptions(dom, rows);
-  const visible = renderRows(dom.main, rows, f, now());
+  const visible = renderRows(dom.main, rows, f, now(), nudgeHooks());
   renderChips(dom.chipsShow, SHOW, showCounts(rows, f), new Set([ui.show]), toggleShow);
   renderChips(dom.chipsType, TYPES, typeCounts(rows, f), ui.types, toggleType);
   renderSectionNav(dom.nav, visible);
@@ -298,6 +304,72 @@ $('scan-clear').addEventListener('click', () => {
   dom.scanStatus.textContent = 'Stored scans cleared.';
 });
 
+// ---- Slack nudge -------------------------------------------------------------
+function nudgeHooks() {
+  const nudges = store.getNudges();
+  return {
+    nudgeTargets: (row) => nudgeTargets(row, { now: now(), me: cache.login, nudgeAfterHours: config.nudgeAfterHours }),
+    nudgedHoursAgo: (row, login) => hoursSinceNudge(nudges, row, login, now()),
+    onNudge: openNudge,
+  };
+}
+
+const nudgeDialog = $('nudge-dialog');
+let nudgeFor = null;
+const nudgeStatus = (text, tone = '') => { $('nudge-status').textContent = text; $('nudge-status').className = `small ${tone}`; };
+
+function openNudge(row, login) {
+  nudgeFor = { row, login };
+  $('nudge-title').textContent = `Nudge @${login}`;
+  $('nudge-sub').textContent = `${row.repo}#${row.number} ${row.title}`;
+  $('nudge-slackid').value = slackIdFor(login, slackFile, store.getSlackMap());
+  $('nudge-text').value = buildMessage(config.nudgeTemplate, row, login, { now: now(), me: cache.login });
+  const nudges = store.getNudges();
+  if (withinCooldown(nudges, row, login, now())) {
+    nudgeStatus(`You already nudged @${login} about this PR ${Math.round(hoursSinceNudge(nudges, row, login, now()))}h ago (wait ${NUDGE_COOLDOWN_HOURS}h between nudges).`, 'bad');
+  } else {
+    nudgeStatus(store.getSlackToken() ? '' : 'No Slack token yet: add one in Settings to send. You can still copy the message.');
+  }
+  $('nudge-send').disabled = false;
+  nudgeDialog.showModal();
+}
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
+}
+
+$('nudge-copy').addEventListener('click', async () => {
+  nudgeStatus((await copyText($('nudge-text').value)) ? 'Copied. Paste it into Slack.' : 'Could not copy. Select the text and copy it by hand.', 'ok');
+});
+$('nudge-cancel').addEventListener('click', () => nudgeDialog.close());
+$('nudge-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  if (!nudgeFor) return;
+  const { row, login } = nudgeFor;
+  const id = $('nudge-slackid').value.trim();
+  const text = $('nudge-text').value.trim();
+  if (!text) { nudgeStatus('The message is empty.', 'bad'); return; }
+  if (demo) { nudgeStatus('Demo mode: nothing is sent.', 'bad'); return; }
+  $('nudge-send').disabled = true;
+  nudgeStatus('Sending…');
+  try {
+    await sendSlackDm(store.getSlackToken(), id, text);
+    if (id !== slackIdFor(login, slackFile, store.getSlackMap())) store.setSlackId(login, id); // remember a typed ID
+    store.recordNudge(nudgeKey(row, login));
+    nudgeStatus(`Sent to @${login} on Slack.`, 'ok');
+    redraw(); // updates the "nudged" label on the row
+  } catch (e) {
+    if (!(e instanceof SlackError)) throw e;
+    if (e.kind === 'blocked') {
+      const copied = await copyText(text);
+      nudgeStatus(`${e.message} ${copied ? 'The message was copied: paste it into Slack yourself.' : 'Copy the message by hand.'}`, 'bad');
+    } else nudgeStatus(e.message, 'bad');
+    $('nudge-send').disabled = false;
+    return;
+  }
+  $('nudge-send').disabled = false;
+});
+
 // ---- dialogs --------------------------------------------------------------
 const tokenDialog = $('token-dialog');
 const configDialog = $('config-dialog');
@@ -339,6 +411,12 @@ function openConfigDialog() {
   $('c-refresh').value = config.refreshMinutes;
   $('c-deadbranch').value = config.deadBranchDays;
   $('c-notify').checked = config.notify;
+  $('c-nudge-hours').value = config.nudgeAfterHours;
+  $('c-nudge-template').value = config.nudgeTemplate;
+  $('c-slack-token').value = '';
+  $('slack-status').textContent = store.getSlackToken()
+    ? 'A Slack token is stored in this browser. Leave the field empty to keep it, or type remove to delete it.'
+    : 'No Slack token stored. Without one the Nudge dialog can only copy the message.';
   $('notify-status').textContent = notifyStatus();
   configDialog.showModal();
 }
@@ -354,6 +432,13 @@ const lines = (id) => $(id).value.split(/[\s,]+/).filter(Boolean);
 $('config-form').addEventListener('submit', (ev) => {
   ev.preventDefault();
   const notify = $('c-notify').checked;
+  const slackInput = $('c-slack-token').value.trim();
+  if (slackInput && slackInput !== 'remove' && !isSlackToken(slackInput)) {
+    $('slack-status').textContent = 'That does not look like a Slack token (it starts with xoxb-, xoxp- or xoxa-). Nothing was saved.';
+    return;
+  }
+  if (slackInput === 'remove') store.forgetSlackToken();
+  else if (slackInput) store.setSlackToken(slackInput);
   // Must be requested from this click handler, or the browser ignores it.
   if (notify && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   store.setConfig({
@@ -361,6 +446,7 @@ $('config-form').addEventListener('submit', (ev) => {
     orgs: lines('c-orgs'), extraRepos: lines('c-repos'),
     staleDays: $('c-stale').value, refreshMinutes: $('c-refresh').value,
     deadBranchDays: $('c-deadbranch').value, notify,
+    nudgeAfterHours: $('c-nudge-hours').value, nudgeTemplate: $('c-nudge-template').value,
   });
   config = store.getConfig();
   configDialog.close();

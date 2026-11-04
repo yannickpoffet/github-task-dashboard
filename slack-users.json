@@ -1,0 +1,1 @@
+{ "_readme": "Maps GitHub login (key, case-insensitive) to Slack member ID. Find an ID in Slack: profile > ... > Copy member ID. Keys starting with _ are ignored. You can also set IDs from the Nudge dialog; those stay in your browser only.", "example-github-login": "U0123ABCDEF" }

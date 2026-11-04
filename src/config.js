@@ -1,5 +1,9 @@
 // Defaults and validation for the user-editable config.
 
+export const DEFAULT_NUDGE_TEMPLATE =
+  'Hi {reviewer}, friendly ping: I am waiting on your review of <{url}|{repo}#{number}> "{title}" ' +
+  '(no activity for {age}). Could you take a look when you have a moment? Thanks!';
+
 export const DEFAULT_CONFIG = {
   orgs: ['Auterion'],
   extraRepos: ['PX4/PX4-Autopilot'], // "owner/repo" or a bare org name
@@ -8,6 +12,8 @@ export const DEFAULT_CONFIG = {
   deadBranchDays: 60,   // an unmerged branch with no commits for this long counts as dead (0 = off)
   branchWho: 'anyone',  // 'anyone' | 'mine': whose branches to list after a scan
   notify: false,        // browser notifications when something changes (needs permission)
+  nudgeAfterHours: 24,  // show the Slack nudge button once a PR has been quiet this long
+  nudgeTemplate: DEFAULT_NUDGE_TEMPLATE,
 };
 
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*(\/[A-Za-z0-9._-]+)?$/;
@@ -29,5 +35,8 @@ export function normalizeConfig(raw) {
     deadBranchDays: num(r.deadBranchDays, DEFAULT_CONFIG.deadBranchDays, 0, 3650),
     branchWho: r.branchWho === 'mine' ? 'mine' : 'anyone',
     notify: r.notify === true,
+    nudgeAfterHours: num(r.nudgeAfterHours, DEFAULT_CONFIG.nudgeAfterHours, 0, 720),
+    nudgeTemplate: typeof r.nudgeTemplate === 'string' && r.nudgeTemplate.trim() && r.nudgeTemplate.length <= 1000
+      ? r.nudgeTemplate : DEFAULT_NUDGE_TEMPLATE,
   };
 }

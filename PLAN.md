@@ -207,3 +207,13 @@ GitHub yet; see below.
   count, optional `Notification` API while a tab is open. A "no longer open" message is suppressed when
   the fetch had warnings (SSO or truncated results), to avoid false alarms. Out of scope: notifications
   while the page is closed (needs a GitHub Actions cron job plus a Slack/email secret).
+
+### Slack nudges
+
+- The Nudge button sends a DM straight from the browser with a Slack token the user pastes in Settings
+  (same trust model as the GitHub token). A GitHub Action relay was the alternative; it keeps the Slack
+  secret out of the browser but needs a workflow, repo secrets and write access for every user.
+- `src/slack.js` posts `chat.postMessage` form-encoded with the token in the body (no preflight). Whether
+  Slack's API accepts such cross-origin calls from github.io could not be tested from the build sandbox;
+  the dialog falls back to copying the message if the browser blocks the call.
+- Not done: nudging teams, bulk nudges, and any automatic sending. Every message needs a click.

@@ -63,7 +63,12 @@ export function normalizePR(n) {
     reviews: (n.latestReviews?.nodes || []).map((r) => ({
       author: r.author?.login || 'ghost', state: r.state, at: ts(r.submittedAt),
     })),
-    comments: (n.comments?.nodes || []).map((c) => ({ author: c.author?.login || 'ghost', at: ts(c.createdAt) })),
+    // Top-level comments plus the latest comment of each unresolved inline review thread, so a
+    // reply on a code line counts as activity (by me or by someone else).
+    comments: [
+      ...(n.comments?.nodes || []),
+      ...(n.reviewThreads?.nodes || []).filter((t) => !t.isResolved).flatMap((t) => t.comments?.nodes || []),
+    ].map((c) => ({ author: c.author?.login || 'ghost', at: ts(c.createdAt) })),
   };
 }
 
@@ -114,7 +119,10 @@ export function classifyPR(pr, ctx) {
     const others = [
       ...pr.comments.filter((c) => lc(c.author) !== me && !isBot(c.author)).map((c) => ({ ...c, what: 'commented' })),
       ...pr.reviews
-        .filter((r) => lc(r.author) !== me && !isBot(r.author) && !['APPROVED', 'PENDING', 'DISMISSED'].includes(r.state))
+        // A reviewer who is requested again has the ball: submitting a review clears the request,
+        // so a pending request next to a review means I re-requested after it.
+        .filter((r) => lc(r.author) !== me && !isBot(r.author) && !['APPROVED', 'PENDING', 'DISMISSED'].includes(r.state)
+          && !pr.requestedUsers.some((u) => lc(u) === lc(r.author)))
         .map((r) => ({ author: r.author, at: r.at, what: r.state === 'CHANGES_REQUESTED' ? 'requested changes' : 'reviewed' })),
     ].sort((a, b) => b.at - a.at);
     if (others.length && others[0].at > mine) {

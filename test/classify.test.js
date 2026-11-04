@@ -346,3 +346,36 @@ test('ctx.branchRepo limits the branch list to one scan; undefined lists all', (
   assert.deepEqual(names({ branchRepo: 'auterion/px4_firmware_private' }), ['a1']);
   assert.deepEqual(names({ branchRepo: '' }), []);
 });
+
+// ---- "Waiting on you" must not fire when the reviewer has the ball ----------------
+test('my PR: reviewer reviewed, I re-requested review (request is pending again): waiting on others', () => {
+  const r = run(pr({ mine: true, commitAgo: 50, reviews: [['bob', 'COMMENTED', 3]], reviewers: ['bob'] }));
+  assert.equal(r.bucket, 'waiting-on-others');
+});
+
+test('my PR: same review but the reviewer is NOT re-requested: still waiting on you', () => {
+  const r = run(pr({ mine: true, commitAgo: 50, reviews: [['bob', 'COMMENTED', 3]], reviewers: ['carol'] }));
+  assert.equal(r.bucket, 'waiting-on-you');
+  assert.match(r.reason, /bob reviewed/);
+});
+
+test('my PR: changes requested, re-requested after pushing: waiting on others (not on you)', () => {
+  const r = run(pr({ mine: true, decision: 'CHANGES_REQUESTED', commitAgo: 50, reviews: [['bob', 'CHANGES_REQUESTED', 3]], reviewers: ['bob'] }));
+  assert.equal(r.bucket, 'waiting-on-others');
+});
+
+test('inline thread: my reply after the reviewer\'s comment counts as my activity', () => {
+  const r = run(pr({ mine: true, commitAgo: 60, reviewers: ['bob'], threads: [['me', 2]], reviews: [['bob', 'COMMENTED', 10]] }));
+  assert.equal(r.bucket, 'waiting-on-others');
+});
+
+test('inline thread: the reviewer\'s unresolved comment after my last activity is waiting on you', () => {
+  const r = run(pr({ mine: true, commitAgo: 60, reviewers: ['bob'], threads: [['bob', 2]] }));
+  assert.equal(r.bucket, 'waiting-on-you');
+  assert.match(r.reason, /bob commented/);
+});
+
+test('inline thread: resolved threads are ignored', () => {
+  const r = run(pr({ mine: true, commitAgo: 60, reviewers: ['bob'], threads: [['bob', 2, true]] }));
+  assert.equal(r.bucket, 'waiting-on-others');
+});

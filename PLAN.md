@@ -217,3 +217,14 @@ GitHub yet; see below.
   Slack's API accepts such cross-origin calls from github.io could not be tested from the build sandbox;
   the dialog falls back to copying the message if the browser blocks the call.
 - Not done: nudging teams, bulk nudges, and any automatic sending. Every message needs a click.
+
+### Fewer false "Waiting on you" on my own PRs
+
+- Inline review-thread replies count as activity: the latest comment of each *unresolved* thread is
+  merged into the PR's comments (`reviewThreads(last: 10)`), so replying on a code line no longer leaves
+  the reviewer's comment looking unanswered.
+- A review from someone who is currently requested as reviewer again is ignored by that rule: submitting
+  a review clears the request, so a pending request next to a review means I re-requested after it.
+- Still counts as waiting on me: a reviewer's top-level comment or unresolved thread newer than my last
+  push/comment, or a review from someone who is not requested again. Only the 10 most recent threads and
+  5 most recent comments are looked at.

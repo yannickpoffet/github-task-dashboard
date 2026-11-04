@@ -60,6 +60,9 @@
           "comments": {
             "nodes": []
           },
+          "reviewThreads": {
+            "nodes": []
+          },
           "commits": {
             "nodes": [
               {
@@ -108,6 +111,9 @@
           "comments": {
             "nodes": []
           },
+          "reviewThreads": {
+            "nodes": []
+          },
           "commits": {
             "nodes": [
               {
@@ -146,6 +152,9 @@
             "nodes": []
           },
           "comments": {
+            "nodes": []
+          },
+          "reviewThreads": {
             "nodes": []
           },
           "commits": {
@@ -194,6 +203,9 @@
           "comments": {
             "nodes": []
           },
+          "reviewThreads": {
+            "nodes": []
+          },
           "commits": {
             "nodes": [
               {
@@ -238,6 +250,9 @@
             "nodes": []
           },
           "comments": {
+            "nodes": []
+          },
+          "reviewThreads": {
             "nodes": []
           },
           "commits": {
@@ -293,6 +308,9 @@
               }
             ]
           },
+          "reviewThreads": {
+            "nodes": []
+          },
           "commits": {
             "nodes": [
               {
@@ -341,6 +359,9 @@
           "comments": {
             "nodes": []
           },
+          "reviewThreads": {
+            "nodes": []
+          },
           "commits": {
             "nodes": [
               {
@@ -387,6 +408,9 @@
                 "createdAt": "2026-10-29T18:00:00.000Z"
               }
             ]
+          },
+          "reviewThreads": {
+            "nodes": []
           },
           "commits": {
             "nodes": [
@@ -445,6 +469,9 @@
           "comments": {
             "nodes": []
           },
+          "reviewThreads": {
+            "nodes": []
+          },
           "commits": {
             "nodes": [
               {
@@ -490,6 +517,9 @@
             "nodes": []
           },
           "comments": {
+            "nodes": []
+          },
+          "reviewThreads": {
             "nodes": []
           },
           "commits": {
@@ -545,6 +575,9 @@
             "nodes": []
           },
           "comments": {
+            "nodes": []
+          },
+          "reviewThreads": {
             "nodes": []
           },
           "commits": {

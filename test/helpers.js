@@ -12,12 +12,12 @@ let seq = 0;
  * Raw PR node. Defaults: someone else's PR, CI green, mergeable, no reviews.
  * Pass `mine: true` to make me the author.
  * reviewers: ['login', 'team:org/slug'], reviews: [[login, state, hoursAgo]],
- * comments: [[login, hoursAgo]], commitAgo: hours since last commit, ci: rollup state or null.
+ * comments: [[login, hoursAgo]], threads: [[login, hoursAgo, resolved?]] (last comment of inline review threads), commitAgo: hours since last commit, ci: rollup state or null.
  */
 export function pr({
   mine = false, author, reviewers = [], reviews = [], comments = [], commitAgo = 48,
   ci = 'SUCCESS', mergeable = 'MERGEABLE', decision = null, draft = false,
-  updatedAgo = 24, base = 'main', repo = 'Auterion/example', size = null,
+  updatedAgo = 24, base = 'main', repo = 'Auterion/example', size = null, threads = [],
 } = {}) {
   seq += 1;
   return {
@@ -37,6 +37,7 @@ export function pr({
     },
     latestReviews: { nodes: reviews.map(([login, state, h]) => ({ author: { login }, state, submittedAt: ago(h) })) },
     comments: { nodes: comments.map(([login, h]) => ({ author: { login }, createdAt: ago(h) })) },
+    reviewThreads: { nodes: threads.map(([login, h, resolved = false]) => ({ isResolved: resolved, comments: { nodes: [{ author: { login }, createdAt: ago(h) }] } })) },
     commits: {
       nodes: [{ commit: { committedDate: ago(commitAgo), statusCheckRollup: ci ? { state: ci } : null } }],
     },

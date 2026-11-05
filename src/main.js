@@ -135,8 +135,49 @@ function tickClock() {
 }
 
 // ---- changes and notifications ------------------------------------------------
+/**
+ * Scroll to a row, highlight it and focus it. If a filter hides it, clear the filters first;
+ * a row inside the collapsed "Watching" section is opened. Returns false if the row is not in the list.
+ */
+function focusRow(id) {
+  const find = () => dom.main.querySelector(`[data-row-id="${CSS.escape(id)}"]`);
+  let node = find();
+  if (!node && cache) {
+    dom.text.value = ''; dom.repo.value = ''; dom.author.value = '';
+    ui.show = 'all'; ui.types.clear();
+    redraw();
+    node = find();
+  }
+  if (!node) return false;
+  const details = node.closest('details');
+  if (details) details.open = true;
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  node.scrollIntoView({ block: 'center', behavior: calm ? 'auto' : 'smooth' });
+  node.classList.remove('flash');
+  void node.offsetWidth; // restart the animation if it is clicked twice
+  node.classList.add('flash');
+  node.setAttribute('tabindex', '-1');
+  node.focus({ preventScroll: true });
+  return true;
+}
+
+function changeItem(c) {
+  const li = el('li');
+  const href = safeUrl(c.url);
+  if (c.type === 'gone') { // the row is no longer in the list, so link to GitHub instead
+    li.append(href ? el('a', { href, target: '_blank', rel: 'noopener noreferrer', text: c.text }) : c.text);
+    return li;
+  }
+  const b = el('button', { type: 'button', class: 'link', title: 'Show this item in the list', text: c.text });
+  b.addEventListener('click', () => {
+    if (!focusRow(c.id) && href) window.open(href, '_blank', 'noopener'); // not in the list any more
+  });
+  li.append(b);
+  return li;
+}
+
 function showChanges(changes) {
-  dom.changesList.replaceChildren(...changes.slice(0, 12).map((c) => el('li', { text: c.text })));
+  dom.changesList.replaceChildren(...changes.slice(0, 12).map(changeItem));
   if (changes.length > 12) dom.changesList.append(el('li', { class: 'muted', text: `…and ${changes.length - 12} more` }));
   dom.changes.hidden = false;
 }
@@ -148,12 +189,16 @@ function notifyChanges(changes) {
   if (!config.notify || !('Notification' in window) || Notification.permission !== 'granted') return;
   if (!document.hidden && document.hasFocus()) return;
   const items = changes.length <= 3
-    ? changes.map((c) => ({ body: c.text, tag: `${c.type}:${c.id}` }))
-    : [{ body: `${changes.length} changes, e.g. ${changes[0].text}`, tag: 'summary' }];
+    ? changes.map((c) => ({ body: c.text, tag: `${c.type}:${c.id}`, id: c.type === 'gone' ? null : c.id }))
+    : [{ body: `${changes.length} changes, e.g. ${changes[0].text}`, tag: 'summary', id: null }];
   for (const it of items) {
     try {
-      const n = new Notification('Task Dashboard', it);
-      n.onclick = () => { window.focus(); n.close(); };
+      const n = new Notification('Task Dashboard', { body: it.body, tag: it.tag });
+      n.onclick = () => {
+        window.focus();
+        n.close();
+        if (!(it.id && focusRow(it.id))) dom.changes.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      };
     } catch { /* some browsers only allow notifications from a service worker */ }
   }
 }

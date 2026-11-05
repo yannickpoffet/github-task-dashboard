@@ -93,7 +93,7 @@ visible and pauses after an auth or rate-limit error until you press Refresh.
   last (also across reloads) and shows a "What changed" panel for: new items waiting on you, newer
   comments or pushes on items already waiting, your PRs becoming ready to merge, your CI turning red
   and your PRs closing or merging. The tab title shows the "Waiting on you" count, e.g. `(3) Task
-  Dashboard`. Turn on *Browser notifications* in Settings to also get desktop notifications. Limits:
+  Dashboard`. Click an entry in the panel (or a desktop notification) to scroll to that row and highlight it; if a filter is hiding the row the filters are cleared first, and a PR that is no longer open links to GitHub instead. Turn on *Browser notifications* in Settings to also get desktop notifications. Limits:
   they only work while a tab with the page is open (it then refreshes in the background every N
   minutes) and are skipped while that tab is focused; they cannot fire when the page is closed. For
   that you would need a scheduled GitHub Action posting to Slack or email, which needs secrets and is

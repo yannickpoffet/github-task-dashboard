@@ -58,3 +58,13 @@ test('branches never produce changes', () => {
 test('no previous data yields no "gone" noise', () => {
   assert.deepEqual(diffRows(null, rows([pr({ mine: true })])), []);
 });
+
+test('every change carries the row id and GitHub url, including for a PR that disappeared', () => {
+  const a = pr({ reviewers: ['me'] });
+  const mine = pr({ mine: true, reviewers: ['bob'] });
+  const d = diffRows(rows([mine]), rows([a]));
+  assert.deepEqual(d.map((x) => [x.type, x.id, x.url]), [
+    ['waiting', a.id, a.url],
+    ['gone', mine.id, mine.url],
+  ]);
+});

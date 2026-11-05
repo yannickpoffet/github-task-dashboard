@@ -81,7 +81,7 @@ function rowEl(row, now, hooks) {
   const link = el('a', { text: label, rel: 'noopener noreferrer' });
   const href = safeUrl(row.url);
   if (href) { link.href = href; link.target = '_blank'; }
-  const node = el('div', { class: `row tone-${toneOf(row)}` },
+  const node = el('div', { class: `row tone-${toneOf(row)}`, 'data-row-id': row.id },
     el('div', { class: 'title' }, el('span', { class: 'repo', text: row.repo }), link),
     pills(row, now),
     el('div', { class: 'reason', text: row.reason }));

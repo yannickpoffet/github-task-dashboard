@@ -36,7 +36,7 @@ export function pr({
       })),
     },
     latestReviews: { nodes: reviews.map(([login, state, h]) => ({ author: { login }, state, submittedAt: ago(h) })) },
-    comments: { nodes: comments.map(([login, h]) => ({ author: { login }, createdAt: ago(h) })) },
+    comments: { nodes: comments.map(([login, h, type]) => ({ author: { login, ...(type ? { __typename: type } : {}) }, createdAt: ago(h) })) },
     reviewThreads: { nodes: threads.map(([login, h, resolved = false]) => ({ isResolved: resolved, comments: { nodes: [{ author: { login }, createdAt: ago(h) }] } })) },
     commits: {
       nodes: [{ commit: { committedDate: ago(commitAgo), statusCheckRollup: ci ? { state: ci } : null } }],

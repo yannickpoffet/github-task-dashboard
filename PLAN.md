@@ -228,3 +228,8 @@ GitHub yet; see below.
 - Still counts as waiting on me: a reviewer's top-level comment or unresolved thread newer than my last
   push/comment, or a review from someone who is not requested again. Only the 10 most recent threads and
   5 most recent comments are looked at.
+
+- Bots are recognised by the GraphQL actor type (`author { __typename }` = `Bot`), not by a `[bot]`
+  login suffix: GraphQL returns `github-actions`, REST returns `github-actions[bot]`. Found on
+  Auterion/radar-streamer#11, where a CI "app created" comment pushed a PR waiting on a reviewer into
+  "Waiting on you".

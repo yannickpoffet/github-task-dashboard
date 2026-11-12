@@ -11,9 +11,9 @@ fragment PR on PullRequest {
   reviewRequests(first: 10) {
     nodes { requestedReviewer { ... on User { login } ... on Team { slug combinedSlug } } }
   }
-  latestReviews(first: 10) { nodes { author { login } state submittedAt } }
-  comments(last: 5) { nodes { author { login } createdAt } }
-  reviewThreads(last: 10) { nodes { isResolved comments(last: 1) { nodes { author { login } createdAt } } } }
+  latestReviews(first: 10) { nodes { author { login __typename } state submittedAt } }
+  comments(last: 5) { nodes { author { login __typename } createdAt } }
+  reviewThreads(last: 10) { nodes { isResolved comments(last: 1) { nodes { author { login __typename } createdAt } } } }
   commits(last: 1) {
     nodes { commit { committedDate statusCheckRollup { state } } }
   }

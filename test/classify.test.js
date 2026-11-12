@@ -394,3 +394,11 @@ test('reviewDecision is derived from latest reviews when GitHub leaves it empty'
 test('my approved PR in a repo without required reviews is still ready to merge', () => {
   assert.equal(bucket(pr({ mine: true, reviews: [['bob', 'APPROVED', 5]], commitAgo: 50 })), 'ready-to-merge');
 });
+
+test('my PR: a GraphQL bot comment ("github-actions", no [bot] suffix) is not someone waiting on me', () => {
+  // Auterion/radar-streamer#11: my own comment, then a CI bot comment 5 minutes later, reviewer requested.
+  const r = run(pr({ mine: true, commitAgo: 60, reviewers: ['quentin-morlet'], comments: [['me', 59], ['github-actions', 58.9, 'Bot']] }));
+  assert.equal(r.bucket, 'waiting-on-others');
+  // a human with the same timing still counts
+  assert.equal(run(pr({ mine: true, commitAgo: 60, reviewers: ['bob'], comments: [['me', 59], ['carol', 58.9, 'User']] })).bucket, 'waiting-on-you');
+});

@@ -18,6 +18,8 @@ export const BUCKETS = [
 const DAY = 86_400_000;
 const lc = (s) => (s ? String(s).toLowerCase() : '');
 const ts = (s) => (s ? Date.parse(s) || 0 : 0);
+// GraphQL returns bot logins without the "[bot]" suffix REST uses ("github-actions"), so the
+// actor type is the reliable signal; the suffix check covers data that carries only a login.
 const isBot = (login) => /\[bot\]$/i.test(login || '');
 
 export function dedupeById(nodes) {
@@ -72,14 +74,14 @@ export function normalizePR(n) {
     requestedUsers: reviewers.filter((r) => r.login).map((r) => r.login),
     requestedTeams: reviewers.filter((r) => r.slug).map((r) => r.combinedSlug || r.slug),
     reviews: (n.latestReviews?.nodes || []).map((r) => ({
-      author: r.author?.login || 'ghost', state: r.state, at: ts(r.submittedAt),
+      author: r.author?.login || 'ghost', bot: r.author?.__typename === 'Bot', state: r.state, at: ts(r.submittedAt),
     })),
     // Top-level comments plus the latest comment of each unresolved inline review thread, so a
     // reply on a code line counts as activity (by me or by someone else).
     comments: [
       ...(n.comments?.nodes || []),
       ...(n.reviewThreads?.nodes || []).filter((t) => !t.isResolved).flatMap((t) => t.comments?.nodes || []),
-    ].map((c) => ({ author: c.author?.login || 'ghost', at: ts(c.createdAt) })),
+    ].map((c) => ({ author: c.author?.login || 'ghost', bot: c.author?.__typename === 'Bot', at: ts(c.createdAt) })),
   };
 }
 
@@ -128,11 +130,11 @@ export function classifyPR(pr, ctx) {
     );
     // Approvals are not a request for action: they feed "Ready to merge" instead.
     const others = [
-      ...pr.comments.filter((c) => lc(c.author) !== me && !isBot(c.author)).map((c) => ({ ...c, what: 'commented' })),
+      ...pr.comments.filter((c) => lc(c.author) !== me && !c.bot && !isBot(c.author)).map((c) => ({ ...c, what: 'commented' })),
       ...pr.reviews
         // A reviewer who is requested again has the ball: submitting a review clears the request,
         // so a pending request next to a review means I re-requested after it.
-        .filter((r) => lc(r.author) !== me && !isBot(r.author) && !['APPROVED', 'PENDING', 'DISMISSED'].includes(r.state)
+        .filter((r) => lc(r.author) !== me && !r.bot && !isBot(r.author) && !['APPROVED', 'PENDING', 'DISMISSED'].includes(r.state)
           && !pr.requestedUsers.some((u) => lc(u) === lc(r.author)))
         .map((r) => ({ author: r.author, at: r.at, what: r.state === 'CHANGES_REQUESTED' ? 'requested changes' : 'reviewed' })),
     ].sort((a, b) => b.at - a.at);

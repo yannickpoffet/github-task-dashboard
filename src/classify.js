@@ -137,7 +137,7 @@ export function classifyPR(pr, ctx) {
         .map((r) => ({ author: r.author, at: r.at, what: r.state === 'CHANGES_REQUESTED' ? 'requested changes' : 'reviewed' })),
     ].sort((a, b) => b.at - a.at);
     if (others.length && others[0].at > mine) {
-      return hit('waiting-on-you', `${others[0].author} ${others[0].what} ${ago(others[0].at)}, after your last activity`, { unanswered: true, eventAt: others[0].at });
+      return hit('waiting-on-you', `${others[0].author} ${others[0].what} ${ago(others[0].at)}, after your last activity`, { unanswered: true, unansweredBy: others[0].author, eventAt: others[0].at });
     }
     const cr = pr.reviews.filter((r) => r.state === 'CHANGES_REQUESTED').sort((a, b) => b.at - a.at)[0];
     if (pr.reviewDecision === 'CHANGES_REQUESTED' && cr && pr.lastCommitAt > cr.at && requested.length === 0) {
@@ -268,7 +268,7 @@ export function classifyAll({ prs = [], issues = [], branchScans = {} }, ctx) {
     const res = classifyPR(pr, ctx);
     const noReviewer = mine && !pr.isDraft && pr.reviewDecision !== 'APPROVED'
       && pr.requestedUsers.length + pr.requestedTeams.length === 0;
-    rows.push({ ...pr, ...res, mine, noReviewer, unanswered: !!res.unanswered });
+    rows.push({ ...pr, ...res, mine, noReviewer, unanswered: !!res.unanswered, unansweredBy: res.unansweredBy || null });
   }
   for (const n of dedupeById(issues)) {
     const issue = normalizeIssue(n);

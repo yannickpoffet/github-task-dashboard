@@ -185,7 +185,7 @@ GitHub yet; see below.
 ### Added after the first live run (ported from the earlier "Orca Triage" artifact)
 
 - Sticky section bar with live counts; Show chips and Type chips with counts that follow the other
-  filters (`src/filters.js`, unit-tested); row status stripe; pills `yours`, `review unanswered`,
+  filters (`src/filters.js`, unit-tested); row status stripe; pills `yours`, `needs your reply`,
   `no reviewer`, `+adds / −dels`; header item/repo counts; footer sources and read-only statement.
 - **Branch scan, on demand** (`scanBranches` in `src/github.js`, rules in `classifyBranch`): one repo
   at a time, 300 most recently updated branches, one GraphQL request per 100 branches (plus one to

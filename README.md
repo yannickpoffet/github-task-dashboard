@@ -74,7 +74,7 @@ visible and pauses after an auth or rate-limit error until you press Refresh.
   exactly one section (first matching rule wins) and every row has a one-line reason.
 - **Rows**: repo, `#PR title` / issue / `⎇ branch`, a status stripe (red = act now, amber = needs
   attention, green = ready, grey = waiting), pills (`yours`, base branch, CI, review state,
-  `review unanswered`, `no reviewer`, `conflicts`, `+adds / −dels`, age) and a link that opens GitHub
+  `needs your reply: @bob`, `no reviewer`, `conflicts`, `+adds / −dels`, age) and a link that opens GitHub
   in a new tab.
 - **Filters** that combine, with counts that follow the current selection: search, repo, author,
   *Show* chips (All, Needs action, Mine, CI failing, No reviewer, Stale, Close or delete) and *Type*

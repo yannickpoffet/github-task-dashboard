@@ -63,7 +63,7 @@ function pills(row, now) {
     meta.append(chip(`→ ${row.base}`, '', DEFAULT_BASES.has(row.base) ? '' : 'base-release'));
     if (row.isDraft) meta.append(chip('draft', 'warn'));
     meta.append(ciChip(row), reviewChip(row));
-    if (row.unanswered) meta.append(chip('review unanswered', 'bad'));
+    if (row.unanswered) meta.append(chip(`needs your reply: @${row.unansweredBy || 'reviewer'}`, 'bad'));
     if (row.noReviewer) meta.append(chip('no reviewer', 'warn'));
     if (row.mergeable === 'CONFLICTING') meta.append(chip('conflicts', 'bad'));
     else if (row.mergeable === 'UNKNOWN') meta.append(chip('checking merge…'));

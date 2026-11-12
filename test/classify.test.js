@@ -288,6 +288,7 @@ test('classifyAll includes scanned branches and flags mine / unanswered / noRevi
   assert.equal(by((r) => r.id === mineNoReviewer.id).noReviewer, true);
   assert.equal(by((r) => r.id === mineNoReviewer.id).additions, 10);
   assert.equal(by((r) => r.id === unanswered.id).unanswered, true);
+  assert.equal(by((r) => r.id === unanswered.id).unansweredBy, 'bob');
   assert.equal(rows.filter((r) => r.kind === 'pr' && !r.mine).length, 1);
 });
 
